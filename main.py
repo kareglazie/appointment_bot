@@ -13,7 +13,7 @@ from telegram.ext import (
 from warnings import filterwarnings
 from telegram.warnings import PTBUserWarning
 
-from keyboards.static_keyboards_setup import all_static_keyboards_setup
+from keyboards.setup import setup_keyboards
 from logger import setup_logger
 from states import START
 
@@ -32,7 +32,7 @@ def main():
         app.bot_data.update(database)
         app.bot_data["logger"] = logger
 
-        all_static_keyboards_setup(app)
+        setup_keyboards(app)
 
         user_handlers = get_user_handlers()
         admin_handlers = get_admin_handlers()

@@ -1,5 +1,10 @@
 import re
-from telegram import ReplyKeyboardRemove, Update
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardRemove,
+    Update,
+)
 from telegram.ext import (
     ContextTypes,
     MessageHandler,
@@ -7,15 +12,20 @@ from telegram.ext import (
     CallbackQueryHandler,
     CallbackContext,
 )
-
+from logger import setup_logger
 from config import ID_TO_SEND_NOTIFICATIONS
-from keyboards.general_keyboards import *
-from keyboards.admin_keyboards import *
-from keyboards.user_keyboards import *
-from messages import CONFIRMATION_MESSAGE, USER_MESSAGES
+from keyboards.general_keyboards import GeneralKeyboards
+from messages import (
+    CONFIRMATION_MESSAGE,
+    EMOJI,
+    INLINE_BUTTONS,
+    REPLY_USER_BUTTONS,
+    USER_MESSAGES,
+)
 from utils.utils import create_appointment_from_context
 from states import *
 from datetime import datetime
+from interfaces.user_interfaces import UserInterface
 
 
 def get_user_handlers():
@@ -82,15 +92,15 @@ async def handle_user_main_menu(update: Update, context: ContextTypes.DEFAULT_TY
     text = update.message.text
 
     if text == REPLY_USER_BUTTONS["SELECT_PROCEDURE"]:
-        await user_show_procedures(update, context)
+        await UserInterface.user_show_procedures(update, context)
         return USER_SELECT_PROCEDURE
 
     if text == REPLY_USER_BUTTONS["CONTACT_MASTER"]:
-        await show_contact_master(update, context)
+        await UserInterface.show_contact_master(update, context)
         return USER_FINAL_HANDLER
 
     if text == REPLY_USER_BUTTONS["VISIT_TG_CHANNEL"]:
-        await show_visit_tg_channel(update, context)
+        await UserInterface.show_visit_tg_channel(update, context)
         return USER_FINAL_HANDLER
 
     else:
@@ -121,7 +131,7 @@ async def handle_user_procedure_selection(
     text = update.message.text
 
     if text == REPLY_USER_BUTTONS["BACK_TO_MENU"]:
-        await user_show_on_return_to_menu(update, context)
+        await UserInterface.user_show_on_return_to_menu(update, context)
         return USER_MAIN_MENU
 
     elif text in context.bot_data["procedures_keyboard_buttons"]:
@@ -130,7 +140,7 @@ async def handle_user_procedure_selection(
 
         await update.message.reply_text(text, reply_markup=ReplyKeyboardRemove())
 
-        await user_show_months(update, context)
+        await UserInterface.user_show_months(update, context)
         return USER_SELECT_MONTH
     else:
         await update.message.reply_text(
@@ -165,7 +175,7 @@ async def handle_user_month_selection(update: Update, context: CallbackContext):
         )
 
         if available_dates:
-            keyboard = date_keyboard(year, month, available_dates)
+            keyboard = GeneralKeyboards.date_keyboard(year, month, available_dates)
             context.user_data["date_keyboard"] = keyboard
             await query.edit_message_text(
                 USER_MESSAGES["SELECT_DATE"], reply_markup=keyboard
@@ -228,10 +238,10 @@ async def handle_user_date_selection(update: Update, context: CallbackContext):
 
         context.user_data["month_selected"] = (year, month)
 
-        keyboard = date_keyboard(year, month, available_dates)
+        keyboard = GeneralKeyboards.date_keyboard(year, month, available_dates)
         context.user_data["date_keyboard"] = keyboard
 
-        await user_show_dates(update, context)
+        await UserInterface.user_show_dates_update_message(update, context)
         return USER_SELECT_DATE
 
     elif query.data.startswith("date_"):
@@ -260,7 +270,7 @@ async def handle_user_date_selection(update: Update, context: CallbackContext):
             )
             return USER_SELECT_DATE
 
-        keyboard = time_keyboard(available_slots)
+        keyboard = GeneralKeyboards.time_keyboard(available_slots)
         context.user_data["time_keyboard"] = keyboard
         await query.edit_message_text(
             USER_MESSAGES["SELECT_TIME"], reply_markup=keyboard
@@ -295,7 +305,7 @@ async def handle_user_time_selection(update: Update, context: CallbackContext):
             )
             return USER_SELECT_PROCEDURE
 
-        await user_show_dates_inline(update, context)
+        await UserInterface.user_show_dates_callback_query(update, context)
         return USER_SELECT_DATE
 
     elif query.data.startswith("time_"):
@@ -309,7 +319,7 @@ async def handle_user_time_selection(update: Update, context: CallbackContext):
 
         context.user_data["time_selected"] = selected_time
 
-        await user_show_enter_name(update, context)
+        await UserInterface.user_show_enter_name(update, context)
         return USER_ENTER_NAME
 
 
@@ -331,7 +341,7 @@ async def handle_user_enter_name(update: Update, context: ContextTypes.DEFAULT_T
     text = update.message.text
 
     if text == REPLY_USER_BUTTONS["BACK_TO_TIME"]:
-        await user_show_back_to_time(update, context)
+        await UserInterface.user_show_back_to_time(update, context)
         return USER_SELECT_TIME
 
     else:
@@ -349,7 +359,7 @@ async def handle_user_enter_name(update: Update, context: ContextTypes.DEFAULT_T
 
         context.user_data["name"] = name
 
-        await user_show_enter_phone(update, context)
+        await UserInterface.user_show_enter_phone(update, context)
         return USER_ENTER_PHONE
 
 
@@ -359,12 +369,12 @@ async def handle_user_enter_phone(update: Update, context: ContextTypes.DEFAULT_
     text = update.message.text
 
     if text == REPLY_USER_BUTTONS["BACK_TO_NAME"]:
-        await user_show_back_to_name(update, context)
+        await UserInterface.user_show_back_to_name(update, context)
         return USER_ENTER_NAME
     else:
         phone = text
         if not re.match(r"^8\d{10}$", phone):
-            await user_show_invalid_phone_format(update, context)
+            await UserInterface.user_show_invalid_phone_format(update, context)
             return USER_ENTER_PHONE
 
         context.user_data["phone"] = phone
@@ -396,25 +406,49 @@ async def handle_user_enter_phone(update: Update, context: ContextTypes.DEFAULT_
 async def handle_user_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Хэндлер для подтверждения или отмены записи."""
 
+    logger = setup_logger(__name__)
     query = update.callback_query
     await query.answer()
 
     if query.data == "confirm":
-        await create_appointment_from_context(update, context)
         await query.edit_message_text(USER_MESSAGES["BOOKING_SUCCESS"])
-        await user_show_continue(update, context)
+        await UserInterface.user_show_continue(update, context)
+        try:
+            await create_appointment_from_context(update, context)
+            db_success = True
+        except Exception as e:
+            db_success = False
+            logger.error(f"Ошибка при записи в базу данных: {e}")
+
+        notification_message = (
+            f'Клиент {context.user_data["name"]} записался на процедуру '
+            f'"{context.user_data["procedure_selected"]}".\n'
+            f'Дата: {context.user_data["date_selected"]}, '
+            f'время: {context.user_data["time_selected"]}.\n'
+            f'Телефон: {context.user_data["phone"]}.\n'
+        )
+
+        if db_success:
+            notification_message += "✅ Запись добавлена в базу данных."
+        else:
+            notification_message += (
+                "❗❗❗ Информация не добавлена в базу данных. "
+                "Обратитесь к разработчику или попробуйте добавить запись "
+                "самостоятельно через админ-интерфейс бота."
+            )
+
         await context.bot.send_message(
             chat_id=ID_TO_SEND_NOTIFICATIONS,
-            text=f'Клиент {context.user_data['name']} записался на процедуру "{context.user_data['procedure_selected']}". Дата: {context.user_data['date_selected']}, время: {context.user_data['time_selected']}. Телефон: {context.user_data['phone']}',
+            text=notification_message,
         )
         return USER_AFTER_CONFIRMATION
 
     elif query.data == "cancel":
-        await user_show_cancel_booking(update, context)
+        await UserInterface.user_show_cancel_booking(update, context)
         return USER_AFTER_CONFIRMATION
 
     elif query.data == "back_to_edit":
-        await user_show_back_to_edit(update, context)
+        await UserInterface.user_show_back_to_edit(update, context)
         return USER_ENTER_PHONE
 
 
@@ -425,11 +459,11 @@ async def handle_user_confirmation_unexpected_input(
 
     text = update.message.text
     if text == REPLY_USER_BUTTONS["BACK_TO_PHONE"]:
-        await user_show_edit_phone(update, context)
+        await UserInterface.user_show_edit_phone(update, context)
         return USER_ENTER_PHONE
 
     elif text == REPLY_USER_BUTTONS["BACK_TO_NAME"]:
-        await user_show_enter_name(update, context)
+        await UserInterface.user_show_enter_name(update, context)
         return USER_ENTER_NAME
 
     else:
@@ -453,11 +487,11 @@ async def handle_user_after_confirmation(
     text = update.message.text
 
     if text == REPLY_USER_BUTTONS["BACK_TO_MENU"]:
-        await user_show_on_return_to_menu(update, context)
+        await UserInterface.user_show_on_return_to_menu(update, context)
         return USER_MAIN_MENU
 
     if text == REPLY_USER_BUTTONS["VISIT_TG_CHANNEL"]:
-        await show_visit_tg_channel(update, context)
+        await UserInterface.show_visit_tg_channel(update, context)
         return USER_FINAL_HANDLER
     else:
         await update.message.reply_text(
@@ -494,19 +528,19 @@ async def handle_user_final_text_handler(
 
     text = update.message.text
     if text == REPLY_USER_BUTTONS["SELECT_PROCEDURE"]:
-        await user_show_procedures(update, context)
+        await UserInterface.user_show_procedures(update, context)
         return USER_SELECT_PROCEDURE
 
     elif text == REPLY_USER_BUTTONS["BACK_TO_MENU"]:
-        await user_show_on_return_to_menu(update, context)
+        await UserInterface.user_show_on_return_to_menu(update, context)
         return USER_MAIN_MENU
 
     elif text == REPLY_USER_BUTTONS["VISIT_TG_CHANNEL"]:
-        await show_visit_tg_channel(update, context)
+        await UserInterface.show_visit_tg_channel(update, context)
         return USER_FINAL_HANDLER
 
     elif text == REPLY_USER_BUTTONS["CONTACT_MASTER"]:
-        await show_contact_master(update, context)
+        await UserInterface.show_contact_master(update, context)
         return USER_FINAL_HANDLER
 
     else:

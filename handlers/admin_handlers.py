@@ -13,13 +13,8 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 
-from keyboards.admin_keyboards import admin_final_keyboard, admin_main_menu_keyboard
-from keyboards.general_keyboards import (
-    confirmation_keyboard,
-    date_keyboard,
-    procedures_keyboard,
-    time_keyboard,
-)
+from keyboards.admin_keyboards import AdminKeyboards
+from keyboards.general_keyboards import GeneralKeyboards
 from states import *
 from utils.formatter import format_date_for_db, format_date_for_db_admin
 from utils.utils import create_appointment_from_context
@@ -95,13 +90,14 @@ async def handle_admin_actions(update: Update, context: ContextTypes.DEFAULT_TYP
     if text == "Добавить запись":
         await update.message.reply_text(
             "Выберите процедуру:",
-            reply_markup=procedures_keyboard(context),
+            reply_markup=context.bot_data["procedures_keyboard"],
         )
         return ADMIN_SELECT_PROCEDURE
 
     elif text == "Удалить запись":
         await update.message.reply_text(
-            "Выберите дату для удаления записи:", reply_markup=date_keyboard(context)
+            "Выберите дату для удаления записи:",
+            reply_markup=GeneralKeyboards.date_keyboard(context),
         )
         return ADMIN_DELETE_APPOINTMENT
 
@@ -132,7 +128,7 @@ async def handle_admin_actions(update: Update, context: ContextTypes.DEFAULT_TYP
     elif text == "Сделать процедуру неактивной":
         await update.message.reply_text(
             "Выберите процедуру:",
-            reply_markup=procedures_keyboard(context),
+            reply_markup=context.bot_data["procedures_keyboard"],
         )
         return ADMIN_DEACTIVATE_PROCEDURE
 
@@ -149,19 +145,15 @@ async def handle_admin_procedure_selection(
     text = update.message.text
     if text == "⬅️ Вернуться в меню":
         await update.message.reply_text(
-            "Пожалуйста, выберите действие", reply_markup=admin_main_menu_keyboard()
+            "Пожалуйста, выберите действие",
+            reply_markup=context.bot_data["admin_main_menu_keyboard"],
         )
         return ADMIN_ACTIONS
     else:
         user_data["procedure_selected"] = " ".join(text.split()[1:])
-        # procedures = context.bot_data["procedures"]
-        # procedure_id = procedures.get_procedure_id_by_type(
-        #     user_data["procedure_selected"]
-        # )
-        # user_data["procedure_id"] = procedure_id
         await update.message.reply_text(
             f"Вы выбрали процедуру: {text}. Теперь выберите дату.",
-            reply_markup=date_keyboard(context),
+            reply_markup=GeneralKeyboards.date_keyboard(context),
         )
         return ADMIN_SELECT_DATE
 
@@ -174,7 +166,7 @@ async def handle_admin_date_selection(
     if text == "Вернуться к выбору процедуры":
         await update.message.reply_text(
             "Пожалуйста, выберите процедуру",
-            reply_markup=procedures_keyboard(context),
+            reply_markup=context.bot_data["procedures_keyboard"],
         )
         return ADMIN_SELECT_PROCEDURE
 
@@ -183,7 +175,7 @@ async def handle_admin_date_selection(
         formatted_date = format_date_for_db(date)
         user_data["date_selected"] = date
         user_data["date_formatted"] = formatted_date
-        keyboard, message = time_keyboard(
+        keyboard, message = GeneralKeyboards.time_keyboard(
             context, formatted_date, user_data["procedure_id"]
         )
 
@@ -208,7 +200,7 @@ async def handle_admin_time_selection(
     if text == "Назад" or text == "Вернуться к выбору даты":
         await update.message.reply_text(
             "Пожалуйста, выберите дату.",
-            reply_markup=date_keyboard(context),
+            reply_markup=GeneralKeyboards.date_keyboard(context),
         )
         return ADMIN_SELECT_DATE
 
@@ -286,7 +278,7 @@ async def handle_admin_text_comment(update: Update, context: ContextTypes.DEFAUL
         f"Комментарий: {user_data.get('comment', 'нет комментария')}"
     )
     await update.message.reply_text(
-        confirmation_message, reply_markup=confirmation_keyboard()
+        confirmation_message, reply_markup=context.bot_data["confirmation_keyboard"]
     )
     return ADMIN_CONFIRMATION
 
@@ -307,7 +299,7 @@ async def handle_admin_skip_comment(update: Update, context: ContextTypes.DEFAUL
         f"Комментарий: нет"
     )
     await query.edit_message_text(
-        confirmation_message, reply_markup=confirmation_keyboard()
+        confirmation_message, reply_markup=context.bot_data["confirmation_keyboard"]
     )
     return ADMIN_CONFIRMATION
 
@@ -321,13 +313,13 @@ async def handle_admin_confirmation(update: Update, context: ContextTypes.DEFAUL
         create_appointment_from_context(update, context)
         await query.edit_message_text(
             "Запись подтверждена✅ Что вы хотите сделать дальше?",
-            reply_markup=admin_final_keyboard(),
+            reply_markup=context.bot_data["admin_final_keyboard"],
         )
 
     elif query.data == "cancel":
         await query.edit_message_text(
             "Запись отменена❌ Что вы хотите сделать дальше?",
-            reply_markup=admin_final_keyboard(),
+            reply_markup=context.bot_data["admin_final_keyboard"],
         )
 
         return ADMIN_AFTER_CONFIRMATION
