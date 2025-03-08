@@ -7,9 +7,9 @@ from telegram import (
     KeyboardButton,
     ReplyKeyboardMarkup,
 )
-from telegram.ext import ContextTypes
 from messages import EMOJI, INLINE_BUTTONS, REPLY_USER_BUTTONS
 from constants import MONTHS_LOOKAHEAD, PROCEDURES_KEYBOARD
+
 
 def month_keyboard():
     """Клавиатура для выбора месяца."""

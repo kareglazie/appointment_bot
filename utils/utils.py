@@ -3,6 +3,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from constants import PROCEDURES
 
+
 async def basic_context_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обновить контекст с основными данными пользователя."""
     user_id = update.effective_user.id
@@ -48,4 +49,3 @@ async def create_appointment_from_context(
         start_time=time_selected,
         end_time=end_time.time(),
     )
-
