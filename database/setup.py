@@ -7,7 +7,6 @@ from database.schedule import Schedule
 
 def setup_database():
     """Настроить базу данных."""
-
     db = Database()
     db.connect()
 

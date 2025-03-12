@@ -1,3 +1,4 @@
+from bot_setup import setup_bot_data
 from config import TOKEN
 from database.setup import setup_database
 from handlers.admin_handlers import *
@@ -13,8 +14,6 @@ from telegram.ext import (
 from warnings import filterwarnings
 from telegram.warnings import PTBUserWarning
 
-from keyboards.setup import setup_keyboards
-from logger import setup_logger
 from states import START
 
 filterwarnings(
@@ -24,15 +23,8 @@ filterwarnings(
 
 def main():
     try:
-        database = setup_database()
         app = Application.builder().token(TOKEN).build()
-
-        logger = setup_logger(__name__)
-
-        app.bot_data.update(database)
-        app.bot_data["logger"] = logger
-
-        setup_keyboards(app)
+        setup_bot_data(app)
 
         user_handlers = get_user_handlers()
         admin_handlers = get_admin_handlers()
@@ -56,13 +48,13 @@ def main():
         app.run_polling()
 
     except KeyboardInterrupt:
-        logger.debug("Бот остановлен.")
+        app.bot_data['logger'].debug("Бот остановлен.")
     except Exception as e:
-        logger.error(f"Ошибка: {e}")
+        app.bot_data['logger'].error(f"Ошибка: {e}")
     finally:
         if "db" in locals():
-            database["db"].close()
-            logger.debug("База данных закрыта.")
+            app.bot_data['db']['db'].close()
+            app.bot_data['logger'].debug("База данных закрыта.")
 
 
 if __name__ == "__main__":
