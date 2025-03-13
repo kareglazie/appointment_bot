@@ -1,22 +1,22 @@
-"""Сообщения для бота."""
+"""Сообщения, тексты кнопок, эмодзи."""
 
-EMOJI = {"BACK": "⬅️", "BLOCKED": "🚫", "SCHEDULE": "📋", "SPARKLE": "✨"}
+EMOJI = {"back": "⬅️", "blocked": "🚫", "schedule": "📋", "sparkle": "✨"}
 
-# Сообщения для пользователей
+# Сообщения для пользователя
 USER_MESSAGES = {
-    "SELECT_PROCEDURE": f"{EMOJI['SPARKLE']} Выберите процедуру:",
+    "SELECT_PROCEDURE": f"{EMOJI['sparkle']} Выберите процедуру:",
 }
 
 REPLY_USER_BUTTONS = {
-    "BACK_TO_MENU": f"{EMOJI['BACK']} Вернуться в меню",
+    "BACK_TO_MENU": f"{EMOJI['back']} Вернуться в меню",
 }
 # Сообщения для администратора
 ADMIN_MESSAGES = {
-    "NOT_AUTHORIZED": f"{EMOJI['BLOCKED']} У вас нет прав администратора.",
+    "NOT_AUTHORIZED": f"{EMOJI['blocked']} У вас нет прав администратора.",
 }
 
 REPLY_ADMIN_BUTTONS = {
-    "ADD_RECORD": f"{EMOJI['SCHEDULE']} Добавить запись",
+    "ADD_RECORD": f"{EMOJI['schedule']} Добавить запись",
 }
 
 CONFIRMATION_MESSAGE = {
@@ -31,4 +31,4 @@ CONFIRMATION_MESSAGE = {
     )
 }
 
-INLINE_BUTTONS = {"EDIT_BOOKING": f"Изменить {EMOJI['SCHEDULE']}"}
+INLINE_BUTTONS = {"edit_booking": f"Изменить {EMOJI['schedule']}"}

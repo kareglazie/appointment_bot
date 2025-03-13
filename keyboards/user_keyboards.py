@@ -1,15 +1,18 @@
+from typing import Dict
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     KeyboardButton,
     ReplyKeyboardMarkup,
 )
-from messages import INLINE_BUTTONS, REPLY_USER_BUTTONS
+from consts.messages import INLINE_BUTTONS, REPLY_USER_BUTTONS
 
 class UserKeyboards:
+
     def __init__(self):
         pass
-    def get_keyboards(self):
+
+    def get_keyboards(self) -> Dict:
         return {
             "main_menu": self.main_menu(),
             "final": self.final(),
@@ -22,7 +25,7 @@ class UserKeyboards:
             "after_edit": self.after_edit(),
             "personal_data": self.personal_data()
         }
-        
+    
     def main_menu(self) -> ReplyKeyboardMarkup:
         """Клавиатура главного меню пользователя."""
         return ReplyKeyboardMarkup(

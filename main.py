@@ -26,7 +26,7 @@ def main():
         app = Application.builder().token(TOKEN).build()
         setup_bot_data(app)
 
-        user_handlers = get_user_handlers()
+        user_handlers = UserHandlers.get_user_handlers()
         admin_handlers = get_admin_handlers()
 
         start = CommandHandler("start", start_handler)
