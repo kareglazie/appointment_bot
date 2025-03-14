@@ -1,15 +1,13 @@
 from bot_setup import setup_bot_data
 from config import TOKEN
-from database.setup import setup_database
-from handlers.admin_handlers import *
-from handlers.general_handlers import *
-from handlers.user_handlers import *
+from handlers.general_handler import *
 
 from telegram.ext import (
     Application,
     MessageHandler,
     CommandHandler,
     ConversationHandler,
+    filters,
 )
 from warnings import filterwarnings
 from telegram.warnings import PTBUserWarning
@@ -26,8 +24,8 @@ def main():
         app = Application.builder().token(TOKEN).build()
         setup_bot_data(app)
 
-        user_handlers = app.bot_data["user"]["handlers"]
-        admin_handlers = get_admin_handlers()
+        user_handler = app.bot_data["user"]["handler"]
+        admin_handler = app.bot_data["admin"]["handler"]
 
         start = CommandHandler("start", start_handler)
         restart = CommandHandler("start", start_handler)
@@ -36,8 +34,8 @@ def main():
             entry_points=[start, restart],
             states={
                 START: [MessageHandler(filters.TEXT & ~filters.COMMAND, start_handler)],
-                **user_handlers,
-                **admin_handlers,
+                **user_handler,
+                **admin_handler,
             },
             fallbacks=[start],
             per_message=False,

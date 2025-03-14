@@ -1,6 +1,6 @@
 from logger import setup_logger
 from database import Database
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 
 class Clients:
@@ -37,27 +37,33 @@ class Clients:
         except Exception as e:
             self.logger.error(f"Ошибка при добавлении клиента: {e}")
 
-    def get_client_by_telephone(self, telephone: str) -> Optional[Tuple]:
+    def get_client_by_telephone(self, telephone: str) -> Optional[List[Tuple]]:
         """Получить данные о клиенте по его номеру телефона."""
-        if not self.client_is_registered_by_phone(telephone):
+        query = "SELECT * FROM Clients WHERE telephone = %s"
+        clients = self.db.fetch_data(query, telephone)
+        if clients:
+            self.logger.debug(
+                f"Найдено клиентов с телефоном {telephone}: {len(clients)}"
+            )
+            return clients
+        else:
             self.logger.debug(f"Клиент с телефоном {telephone} не найден.")
             return None
-
-        client = self.db.fetch_data(
-            "SELECT * FROM Clients WHERE telephone = %s", telephone
-        )
-        return client[0] if client else None
 
     def get_client_id_by_telephone(self, telephone: str) -> Optional[int]:
         """Получить ID клиента по его номеру телефона."""
-        if not self.client_is_registered_by_phone(telephone):
+        query = "SELECT id FROM Clients WHERE telephone = %s"
+        client_ids = self.db.fetch_data(query, telephone)
+        if client_ids:
+            if len(client_ids) > 1:
+                self.logger.warning(
+                    f"Найдено несколько клиентов с телефоном {telephone}. "
+                    "Используйте tg_id для однозначной идентификации."
+                )
+            return client_ids[0][0]  # Возвращаем ID первого клиента
+        else:
             self.logger.debug(f"Клиент с телефоном {telephone} не найден.")
             return None
-
-        client_id = self.db.fetch_data(
-            "SELECT id FROM Clients WHERE telephone = %s", telephone
-        )
-        return client_id[0][0] if client_id else None
 
     def get_client_id_by_tg_id(self, tg_id: int) -> Optional[int]:
         """Получить ID клиента по его tg_id."""
@@ -70,15 +76,18 @@ class Clients:
 
     def update_client_phone_by_phone(self, old_telephone: str, new_telephone: str):
         """Обновить телефон клиента (получение данных по номеру телефона)."""
-        if not self.client_is_registered_by_phone(old_telephone):
+        query = "SELECT id FROM Clients WHERE telephone = %s"
+        client_ids = self.db.fetch_data(query, old_telephone)
+
+        if not client_ids:
             self.logger.debug(f"Клиент с телефоном {old_telephone} не найден.")
             return
-
-        query = "UPDATE Clients SET telephone = %s WHERE telephone = %s"
-        self.db.execute_query(query, new_telephone, old_telephone)
-        self.logger.debug(
-            f"Телефон клиента изменен с {old_telephone} на {new_telephone}."
-        )
+        elif len(client_ids) > 1:
+            self.logger.warning(
+                f"Найдено несколько клиентов с телефоном {old_telephone}. "
+                "Обновление телефона не выполнено."
+            )
+            return
 
     def update_client_phone_by_tg_id(self, tg_id: int, new_telephone: str):
         """Обновить телефон клиента (получение данных по tg id)."""
@@ -86,7 +95,7 @@ class Clients:
             self.logger.debug(f"Клиент с tg_id {tg_id} не найден.")
             return
 
-        query = "UPDATE Clients SET telephone = %s WHERE tg_id= %s"
+        query = "UPDATE Clients SET telephone = %s WHERE tg_id = %s"
         self.db.execute_query(query, new_telephone, tg_id)
         self.logger.debug(
             f"Телефон клиента с tg id {tg_id} изменен на {new_telephone}."
@@ -94,12 +103,22 @@ class Clients:
 
     def update_client_name_by_phone(self, telephone: str, new_name: str):
         """Обновить имя клиента (получение данных по номеру телефона)."""
-        if not self.client_is_registered_by_phone(telephone):
+        query = "SELECT id FROM Clients WHERE telephone = %s"
+        client_ids = self.db.fetch_data(query, telephone)
+
+        if not client_ids:
             self.logger.debug(f"Клиент с телефоном {telephone} не найден.")
             return
+        elif len(client_ids) > 1:
+            self.logger.warning(
+                f"Найдено несколько клиентов с телефоном {telephone}. "
+                "Обновление имени не выполнено."
+            )
+            return
 
-        query = "UPDATE Clients SET name = %s WHERE telephone = %s"
-        self.db.execute_query(query, new_name, telephone)
+        # Обновляем имя для одного клиента
+        query = "UPDATE Clients SET name = %s WHERE id = %s"
+        self.db.execute_query(query, new_name, client_ids[0][0])
         self.logger.debug(
             f"Имя клиента с телефоном {telephone} изменено на {new_name}."
         )
@@ -137,26 +156,18 @@ class Clients:
 
     def get_client_name_by_telephone(self, telephone: str) -> Optional[str]:
         """Получить имя клиента по его телефону."""
-        if not self.client_is_registered(telephone):
+        query = "SELECT name FROM Clients WHERE telephone = %s"
+        clients = self.db.fetch_data(query, telephone)
+        if clients:
+            if len(clients) > 1:
+                self.logger.warning(
+                    f"Найдено несколько клиентов с телефоном {telephone}. "
+                    "Используйте tg_id для однозначной идентификации."
+                )
+            return clients[0][0]  # Возвращаем имя первого клиента
+        else:
+            self.logger.debug(f"Клиент с телефоном {telephone} не найден.")
             return None
-
-        client = self.db.fetch_data(
-            "SELECT name FROM Clients WHERE telephone = %s", telephone
-        )
-        return client[0][0] if client else None
-
-    # def update_client_data(
-    #     self, id: int, telephone: Optional[str] = None, tg_id: Optional[str] = None, tg_first_name: Optional[str] = None, tg_username: Optional[str] = None
-    # ):
-    #     """Обновить tg_id, tg_first_name и tg_username клиента."""
-    #     if not self.client_is_registered_by_phone(telephone):
-    #         return
-
-    #     query = "UPDATE Clients SET tg_id = %s, tg_first_name = %s, tg_username = %s, telephone = %s WHERE id = %s"
-    #     self.db.execute_query(query, tg_id, tg_first_name, tg_username, telephone, id)
-    #     self.logger.debug(
-    #         f"tg_id, tg_first_name и tg_username клиента с телефоном {telephone} изменены на {tg_id}, {tg_first_name} и {tg_username}."
-    #     )
 
     def client_is_registered_by_phone(self, telephone: str) -> bool:
         """Проверить, существует ли в базе данных клиент с таким телефоном."""

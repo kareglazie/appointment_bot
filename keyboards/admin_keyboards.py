@@ -1,36 +1,67 @@
+from typing import Dict
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 
 from consts.messages import REPLY_ADMIN_BUTTONS
 
 
-def admin_main_menu_keyboard():
-    keyboard = [
-        [KeyboardButton(REPLY_ADMIN_BUTTONS["add_record"])],
-        [KeyboardButton(REPLY_ADMIN_BUTTONS["delete_record"])],
-        [KeyboardButton(REPLY_ADMIN_BUTTONS["view_records"])],
-        [KeyboardButton(REPLY_ADMIN_BUTTONS["view_slots"])],
-        [KeyboardButton(REPLY_ADMIN_BUTTONS["exit"])],
-    ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+class AdminKeyboards:
 
+    def __init__(self):
+        pass
 
-# def admin_procedures_keyboard(procedures):
-#     buttons = [[proc[1]] for proc in procedures]
-#     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+    def get_keyboards(self) -> Dict:
+        return {
+            "main_menu": self.main_menu(),
+            "dates_menu": self.dates_menu(),
+            "clients_menu": self.clients_menu(),
+            "appointments_menu": self.appointments_menu(),
+            "client": self.client(),
+        }
 
-# def admin_dates_keyboard(dates):
-#     buttons = [[date.strftime("%Y-%m-%d")] for date in dates]
-#     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+    def main_menu(self) -> ReplyKeyboardMarkup:
+        keyboard = [
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["dates"])],
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["clients"])],
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["appointments"])],
+        ]
+        return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-# def admin_times_keyboard(times):
-#     buttons = [[time.strftime("%H:%M")] for time in times]
-#     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+    def dates_menu(self) -> ReplyKeyboardMarkup:
+        keyboard = [
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["view_available_dates"])],
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["block_day_or_time"])],
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])],
+        ]
+        return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
+    def clients_menu(self) -> ReplyKeyboardMarkup:
+        keyboard = [
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["add_client"])],
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])],
+        ]
+        return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-def admin_final_keyboard():
+    def client(self) -> ReplyKeyboardMarkup:
+        keyboard = [
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["view_client_appointments"])],
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["delete_client"])],
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])],
+        ]
+        return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-    return ReplyKeyboardMarkup(
-        [[REPLY_ADMIN_BUTTONS["back_to_menu"]]],
-        resize_keyboard=True,
-        one_time_keyboard=True,
-    )
+    def appointments_menu(self) -> ReplyKeyboardMarkup:
+        keyboard = [
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["view_appointments"])],
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["add_appointment"])],
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["reschedule_appointment"])],
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["delete_appointment"])],
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])],
+        ]
+        return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+    def admin_final_keyboard(self):
+        return ReplyKeyboardMarkup(
+            [[REPLY_ADMIN_BUTTONS["back_to_menu"]]],
+            resize_keyboard=True,
+            one_time_keyboard=True,
+        )
