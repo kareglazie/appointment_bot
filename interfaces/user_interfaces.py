@@ -155,9 +155,9 @@ class UserInterface:
     async def appointments(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE, client_id: int
     ):
-        appointments_list = context.bot_data["db"]["appointments"].get_client_appointments(
-            client_id
-        )
+        appointments_list = context.bot_data["db"][
+            "appointments"
+        ].get_client_appointments(client_id)
         context.user_data["appointments_list"] = appointments_list
         appointments_text = f"{EMOJI['user']} <b>Ваши записи:</b>\n————————————\n"
         for appointment in appointments_list:

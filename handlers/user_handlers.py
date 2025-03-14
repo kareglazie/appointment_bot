@@ -203,7 +203,9 @@ class UserHandlers:
                 return USER_ENTER_PHONE_FOR_ACCOUNT
 
             else:
-                if context.bot_data["db"]["clients"].client_is_registered_by_phone(text):
+                if context.bot_data["db"]["clients"].client_is_registered_by_phone(
+                    text
+                ):
                     await self.interfaces.user_account(update, context)
                     return USER_CLIENT_ACCOUNT
 
@@ -516,8 +518,6 @@ class UserHandlers:
             context.user_data["reschedule"] = False
 
             appointment_id = int(context.user_data["appointment_id"])
-            print(appointment_id)
-            print(type(appointment_id))
             appointments = context.bot_data["db"]["appointments"]
 
             appointment_data = appointments.get_client_data_by_appointment_id(
@@ -667,7 +667,9 @@ class UserHandlers:
             )
             return USER_SELECT_MONTH
 
-    async def select_month_unexpected_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def select_month_unexpected_input(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
         """Хэндлер для обработки непредвиденного ввода при выборе месяца."""
 
         await update.message.reply_text(

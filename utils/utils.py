@@ -19,7 +19,7 @@ async def create_appointment_from_context(
 ):
     """Создать запись на основе данных из контекста."""
 
-    tg_id = context.user_data["tg_id"]
+    tg_id = int(context.user_data["tg_id"])
     tg_username = context.user_data["tg_username"]
     tg_first_name = context.user_data["tg_first_name"]
     procedure_name = context.user_data["procedure_selected"]
@@ -43,6 +43,7 @@ async def create_appointment_from_context(
     end_time = datetime.combine(date_selected, time_selected) + procedure_duration
 
     appointments.create_appointment(
+        tg_id=tg_id,
         client_name=name,
         client_telephone=phone,
         procedure=procedure_name,

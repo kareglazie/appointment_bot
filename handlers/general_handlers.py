@@ -22,6 +22,6 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(
             f"{EMOJI['sparkle']} Добрый день, {context.user_data['tg_username']}! Чем вам помочь?",
-            reply_markup=context.bot_data["user"]["keyboards"]["main_menu"]
+            reply_markup=context.bot_data["user"]["keyboards"]["main_menu"],
         )
         return USER_MAIN_MENU

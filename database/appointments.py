@@ -14,6 +14,7 @@ class Appointments:
 
     def create_appointment(
         self,
+        tg_id: int,
         client_name: str,
         client_telephone: str,
         procedure: str,
@@ -22,7 +23,7 @@ class Appointments:
         end_time: time,
     ):
         """Добавить запись на процедуру."""
-        client_id = self.clients.get_client_id_by_telephone(client_telephone)
+        client_id = self.clients.get_client_id_by_tg_id(tg_id)
         query = """
             INSERT INTO Appointments (client_id, procedure, date, start_time, end_time)
             VALUES (%s, %s, %s, %s, %s)
@@ -112,7 +113,6 @@ class Appointments:
             WHERE a.id = %s
         """
         result = self.db.fetch_data(query, appointment_id)[0]
-        print(f"RESULT: {result}")
         return result
 
     def reschedule_appointment(

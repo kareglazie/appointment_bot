@@ -190,9 +190,7 @@ class GeneralKeyboards:
         return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
     def procedures_buttons(self) -> List:
-        return [
-            button.text for row in self.procedures().keyboard for button in row
-        ]
+        return [button.text for row in self.procedures().keyboard for button in row]
 
     def confirmation(self) -> InlineKeyboardMarkup:
         """Создает клавиатуру для подтверждения или отмены записи."""
