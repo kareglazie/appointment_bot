@@ -7,6 +7,7 @@ from telegram import (
 )
 from consts.messages import INLINE_BUTTONS, REPLY_USER_BUTTONS
 
+
 class UserKeyboards:
 
     def __init__(self):
@@ -23,17 +24,17 @@ class UserKeyboards:
             "appointments": self.appointments(),
             "cancel_reschedule": self.cancel_reschedule(),
             "after_edit": self.after_edit(),
-            "personal_data": self.personal_data()
+            "personal_data": self.personal_data(),
         }
-    
+
     def main_menu(self) -> ReplyKeyboardMarkup:
         """Клавиатура главного меню пользователя."""
         return ReplyKeyboardMarkup(
             [
-                [KeyboardButton(REPLY_USER_BUTTONS["SELECT_PROCEDURE"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["CLIENT_ACCOUNT"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["CONTACT_MASTER"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["VISIT_TG_CHANNEL"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["select_procedure"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["client_account"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["contact_master"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["visit_tg_channel"])],
             ],
             resize_keyboard=True,
             one_time_keyboard=True,
@@ -44,10 +45,14 @@ class UserKeyboards:
         keyboard = [
             [
                 InlineKeyboardButton(
-                    INLINE_BUTTONS["TG_CHANNEL"], url=INLINE_BUTTONS["TG_CHANNEL_URL"]
+                    INLINE_BUTTONS["tg_channel"], url=INLINE_BUTTONS["tg_channel_url"]
                 )
             ],
-            [InlineKeyboardButton(INLINE_BUTTONS["TO_MENU"], callback_data="back_to_menu")],
+            [
+                InlineKeyboardButton(
+                    INLINE_BUTTONS["to_menu"], callback_data="back_to_menu"
+                )
+            ],
         ]
         return InlineKeyboardMarkup(keyboard)
 
@@ -56,15 +61,19 @@ class UserKeyboards:
         keyboard = [
             [
                 InlineKeyboardButton(
-                    INLINE_BUTTONS["TG_CHANNEL"], url=INLINE_BUTTONS["TG_CHANNEL_URL"]
+                    INLINE_BUTTONS["tg_channel"], url=INLINE_BUTTONS["tg_channel_url"]
                 )
             ],
             [
                 InlineKeyboardButton(
-                    INLINE_BUTTONS["TO_PROFILE"], callback_data="back_to_profile"
+                    INLINE_BUTTONS["to_profile"], callback_data="back_to_profile"
                 )
             ],
-            [InlineKeyboardButton(INLINE_BUTTONS["TO_MENU"], callback_data="back_to_menu")],
+            [
+                InlineKeyboardButton(
+                    INLINE_BUTTONS["to_menu"], callback_data="back_to_menu"
+                )
+            ],
         ]
         return InlineKeyboardMarkup(keyboard)
 
@@ -73,13 +82,13 @@ class UserKeyboards:
         keyboard = [
             [
                 InlineKeyboardButton(
-                    INLINE_BUTTONS["CHAT_WITH_MASTER"],
-                    url=INLINE_BUTTONS["CHAT_WITH_MASTER_URL"],
+                    INLINE_BUTTONS["chat_with_master"],
+                    url=INLINE_BUTTONS["chat_with_master_url"],
                 )
             ],
             [
                 InlineKeyboardButton(
-                    INLINE_BUTTONS["BACK_TO_MENU"], callback_data="back_to_menu"
+                    INLINE_BUTTONS["back_to_menu"], callback_data="back_to_menu"
                 )
             ],
         ]
@@ -89,8 +98,8 @@ class UserKeyboards:
         """Клавиатура для возврата в главное меню или перехода в тг-канал."""
         return ReplyKeyboardMarkup(
             [
-                [KeyboardButton(REPLY_USER_BUTTONS["BACK_TO_MENU"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["VISIT_TG_CHANNEL"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["back_to_menu"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["visit_tg_channel"])],
             ],
             resize_keyboard=True,
             one_time_keyboard=True,
@@ -100,9 +109,9 @@ class UserKeyboards:
         """Клавиатура для просмотра и отмены записей."""
         return ReplyKeyboardMarkup(
             [
-                [KeyboardButton(REPLY_USER_BUTTONS["MY_APPOINTMENTS"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["MY_PROFILE"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["BACK_TO_MENU"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["my_appointments"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["my_profile"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["back_to_menu"])],
             ],
             resize_keyboard=True,
             one_time_keyboard=True,
@@ -112,9 +121,9 @@ class UserKeyboards:
         """Клавиатура для просмотра и отмены записей."""
         return ReplyKeyboardMarkup(
             [
-                [KeyboardButton(REPLY_USER_BUTTONS["RESCHEDULE_OR_CANCEL"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["BACK_TO_PROFILE"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["BACK_TO_MENU"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["reschedule_or_cancel"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["back_to_profile"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["back_to_menu"])],
             ],
             resize_keyboard=True,
             one_time_keyboard=True,
@@ -124,11 +133,11 @@ class UserKeyboards:
         """Клавиатура для выбора действия для применения к записи - отмена или перенос."""
         return ReplyKeyboardMarkup(
             [
-                [KeyboardButton(REPLY_USER_BUTTONS["RESCHEDULE_APPOINTMENT"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["CANCEL_APPOINTMENT"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["TO_PROFILE"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["TO_MY_APPOINTMENTS"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["TO_MENU"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["reschedule_appointment"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["cancel_appointment"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["to_profile"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["to_my_appointments"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["to_menu"])],
             ],
             resize_keyboard=True,
             one_time_keyboard=True,
@@ -137,9 +146,9 @@ class UserKeyboards:
     def after_edit(self) -> ReplyKeyboardMarkup:
         return ReplyKeyboardMarkup(
             [
-                [KeyboardButton(REPLY_USER_BUTTONS["BACK_TO_PROFILE"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["BACK_TO_MENU"])],
-                [KeyboardButton(REPLY_USER_BUTTONS["VISIT_TG_CHANNEL"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["back_to_profile"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["back_to_menu"])],
+                [KeyboardButton(REPLY_USER_BUTTONS["visit_tg_channel"])],
             ],
             resize_keyboard=True,
             one_time_keyboard=True,
@@ -147,13 +156,21 @@ class UserKeyboards:
 
     def personal_data(self) -> InlineKeyboardMarkup:
         keyboard = [
-            [InlineKeyboardButton(INLINE_BUTTONS["TELEPHONE"], callback_data="telephone")],
-            [InlineKeyboardButton(INLINE_BUTTONS["NAME"], callback_data="client_name")],
             [
                 InlineKeyboardButton(
-                    INLINE_BUTTONS["TO_PROFILE"], callback_data="back_to_profile"
+                    INLINE_BUTTONS["telephone"], callback_data="telephone"
                 )
             ],
-            [InlineKeyboardButton(INLINE_BUTTONS["TO_MENU"], callback_data="back_to_menu")],
+            [InlineKeyboardButton(INLINE_BUTTONS["name"], callback_data="client_name")],
+            [
+                InlineKeyboardButton(
+                    INLINE_BUTTONS["to_profile"], callback_data="back_to_profile"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    INLINE_BUTTONS["to_menu"], callback_data="back_to_menu"
+                )
+            ],
         ]
         return InlineKeyboardMarkup(keyboard)

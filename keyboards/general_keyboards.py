@@ -10,8 +10,9 @@ from telegram import (
 from consts.messages import EMOJI, INLINE_BUTTONS, REPLY_USER_BUTTONS
 from consts.constants import MONTHS_LOOKAHEAD, PROCEDURES_KEYBOARD
 
+
 class GeneralKeyboards:
-    
+
     def __init__(self):
         pass
 
@@ -19,8 +20,6 @@ class GeneralKeyboards:
         return {
             "months": self.months(),
             "procedures": self.procedures(),
-            "date": self.date(),
-            "time": self.time(),
             "confirmation": self.confirmation(),
         }
 
@@ -77,7 +76,7 @@ class GeneralKeyboards:
             prev_year = year if month > 1 else year - 1
             header.append(
                 InlineKeyboardButton(
-                    EMOJI["BACK"], callback_data=f"prev_month_{prev_year}_{prev_month}"
+                    EMOJI["back"], callback_data=f"prev_month_{prev_year}_{prev_month}"
                 )
             )
 
@@ -192,9 +191,7 @@ class GeneralKeyboards:
 
     def procedures_buttons(self) -> List:
         return [
-            button.text
-            for row in self.procedures_keyboard().keyboard
-            for button in row
+            button.text for row in self.procedures().keyboard for button in row
         ]
 
     def confirmation(self) -> InlineKeyboardMarkup:

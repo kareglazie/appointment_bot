@@ -3,7 +3,7 @@ from telegram import (
 )
 from telegram.ext import ContextTypes
 from config import ADMIN_IDS
-from messages import EMOJI
+from consts.messages import EMOJI
 from states import *
 from utils.utils import basic_context_update
 
@@ -21,7 +21,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     else:
         await update.message.reply_text(
-            f"{EMOJI['SPARKLE']} Добрый день, {context.user_data['tg_username']}! Чем вам помочь?",
-            reply_markup=context.bot_data["user_main_menu_keyboard"],
+            f"{EMOJI['sparkle']} Добрый день, {context.user_data['tg_username']}! Чем вам помочь?",
+            reply_markup=context.bot_data["user"]["keyboards"]["main_menu"]
         )
         return USER_MAIN_MENU

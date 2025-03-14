@@ -26,7 +26,7 @@ def main():
         app = Application.builder().token(TOKEN).build()
         setup_bot_data(app)
 
-        user_handlers = UserHandlers.get_user_handlers()
+        user_handlers = app.bot_data["user"]["handlers"]
         admin_handlers = get_admin_handlers()
 
         start = CommandHandler("start", start_handler)
@@ -48,13 +48,13 @@ def main():
         app.run_polling()
 
     except KeyboardInterrupt:
-        app.bot_data['logger'].debug("Бот остановлен.")
+        app.bot_data["logger"].debug("Бот остановлен.")
     except Exception as e:
-        app.bot_data['logger'].error(f"Ошибка: {e}")
+        app.bot_data["logger"].error(f"Ошибка: {e}")
     finally:
         if "db" in locals():
-            app.bot_data['db']['db'].close()
-            app.bot_data['logger'].debug("База данных закрыта.")
+            app.bot_data["db"]["db"].close()
+            app.bot_data["logger"].debug("База данных закрыта.")
 
 
 if __name__ == "__main__":

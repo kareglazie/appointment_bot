@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timedelta
 from typing import List, Optional, Tuple
 import config
-from constants import *
+from consts.constants import *
 from database import Database
 from logger import setup_logger
 from database.blocked_slots import BlockedSlots

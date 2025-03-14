@@ -1,15 +1,15 @@
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 
-from messages import REPLY_ADMIN_BUTTONS
+from consts.messages import REPLY_ADMIN_BUTTONS
 
 
 def admin_main_menu_keyboard():
     keyboard = [
-        [KeyboardButton(REPLY_ADMIN_BUTTONS["ADD_RECORD"])],
-        [KeyboardButton(REPLY_ADMIN_BUTTONS["DELETE_RECORD"])],
-        [KeyboardButton(REPLY_ADMIN_BUTTONS["VIEW_RECORDS"])],
-        [KeyboardButton(REPLY_ADMIN_BUTTONS["VIEW_SLOTS"])],
-        [KeyboardButton(REPLY_ADMIN_BUTTONS["EXIT"])],
+        [KeyboardButton(REPLY_ADMIN_BUTTONS["add_record"])],
+        [KeyboardButton(REPLY_ADMIN_BUTTONS["delete_record"])],
+        [KeyboardButton(REPLY_ADMIN_BUTTONS["view_records"])],
+        [KeyboardButton(REPLY_ADMIN_BUTTONS["view_slots"])],
+        [KeyboardButton(REPLY_ADMIN_BUTTONS["exit"])],
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -30,7 +30,7 @@ def admin_main_menu_keyboard():
 def admin_final_keyboard():
 
     return ReplyKeyboardMarkup(
-        [[REPLY_ADMIN_BUTTONS["BACK_TO_MENU"]]],
+        [[REPLY_ADMIN_BUTTONS["back_to_menu"]]],
         resize_keyboard=True,
         one_time_keyboard=True,
     )

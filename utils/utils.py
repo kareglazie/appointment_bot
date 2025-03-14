@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from telegram import Update
 from telegram.ext import ContextTypes
-from constants import PROCEDURES
+from consts.constants import PROCEDURES
 
 
 async def basic_context_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -28,8 +28,8 @@ async def create_appointment_from_context(
     name = context.user_data["name"]
     phone = context.user_data["phone"]
 
-    clients = context.bot_data["clients"]
-    appointments = context.bot_data["appointments"]
+    clients = context.bot_data["db"]["clients"]
+    appointments = context.bot_data["db"]["appointments"]
 
     clients.add_client(
         tg_id=tg_id,
