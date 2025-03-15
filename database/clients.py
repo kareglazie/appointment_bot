@@ -50,6 +50,17 @@ class Clients:
             self.logger.debug(f"Клиент с телефоном {telephone} не найден.")
             return None
 
+    def get_client_by_id(self, id: int) -> Optional[List[Tuple]]:
+        """Получить данные о клиенте по его ID."""
+        query = "SELECT id, name, telephone, tg_username FROM Clients WHERE id = %s"
+        clients = self.db.fetch_data(query, id)
+        if clients:
+            self.logger.debug(f"Найдено клиентов с ID {id}: {len(clients)}")
+            return clients
+        else:
+            self.logger.debug(f"Клиент с ID {id} не найден.")
+            return None
+
     def get_client_id_by_telephone(self, telephone: str) -> Optional[int]:
         """Получить ID клиента по его номеру телефона."""
         query = "SELECT id FROM Clients WHERE telephone = %s"
@@ -188,3 +199,23 @@ class Clients:
         else:
             self.logger.debug(f"Клиент с tg_id {tg_id} не найден.")
             return False
+
+    def get_client_name_by_id(self, id: int) -> Optional[str]:
+        """Получить имя клиента по его ID."""
+        query = "SELECT name FROM Clients WHERE id = %s"
+        client = self.db.fetch_data(query, id)
+        if client:
+            return client[0]
+        else:
+            self.logger.debug(f"Клиент с ID {id} не найден.")
+            return None
+
+    def get_client_phone_by_id(self, id: int) -> Optional[str]:
+        """Получить телефон клиента по его ID."""
+        query = "SELECT telephone FROM Clients WHERE id = %s"
+        client = self.db.fetch_data(query, id)
+        if client:
+            return client[0]
+        else:
+            self.logger.debug(f"Клиент с ID {id} не найден.")
+            return None

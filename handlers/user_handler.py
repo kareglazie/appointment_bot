@@ -175,7 +175,9 @@ class UserHandler:
             procedure_name = " ".join(text.split()[1:])
             context.user_data["procedure_selected"] = procedure_name
 
-            await update.message.reply_text(text=text, reply_markup=ReplyKeyboardRemove())
+            await update.message.reply_text(
+                text=text, reply_markup=ReplyKeyboardRemove()
+            )
 
             await self.interface.months(update)
             return USER_SELECT_MONTH
@@ -266,7 +268,7 @@ class UserHandler:
         query = update.callback_query
         await query.answer()
         await query.delete_message()
-        chat_id=context.user_data['chat_id']
+        chat_id = context.user_data["chat_id"]
 
         if query.data == "telephone":
             await context.bot.send_message(
@@ -333,7 +335,7 @@ class UserHandler:
                 clients.update_client_phone_by_tg_id(tg_id, phone)
 
                 await context.bot.send_message(
-                    chat_id=context.user_data['chat_id'],
+                    chat_id=context.user_data["chat_id"],
                     text=f"{USER_MESSAGES["phone_updated"]}: {phone}.",
                     reply_markup=self.interface.user_keyboards["after_edit"],
                 )
@@ -425,7 +427,7 @@ class UserHandler:
         """Хэндлер для выбора записи для переноса или отмены."""
         query = update.callback_query
         await query.answer()
-        chat_id=context.user_data['chat_id']
+        chat_id = context.user_data["chat_id"]
         await query.delete_message()
 
         if query.data.startswith("select_appointment"):
@@ -624,7 +626,7 @@ class UserHandler:
         query = update.callback_query
         await query.answer()
         await query.delete_message()
-        chat_id=context.user_data['chat_id']
+        chat_id = context.user_data["chat_id"]
 
         if query.data == "back":
             if not context.user_data["reschedule"]:
@@ -663,8 +665,8 @@ class UserHandler:
                 context.user_data["date_keyboard"] = keyboard
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=USER_MESSAGES["select_date"], 
-                    reply_markup=keyboard
+                    text=USER_MESSAGES["select_date"],
+                    reply_markup=keyboard,
                 )
                 return USER_SELECT_DATE
 
@@ -704,7 +706,7 @@ class UserHandler:
 
         query = update.callback_query
         await query.answer()
-        chat_id = context.user_data['chat_id']
+        chat_id = context.user_data["chat_id"]
 
         if query.data == "back_to_months":
             await query.delete_message()
@@ -768,12 +770,12 @@ class UserHandler:
                 )
                 return USER_SELECT_DATE
 
-            keyboard = self.dyn_keyboards.time(available_slots)
+            keyboard = self.dyn_keyboards.time(available_slots, context)
             context.user_data["time_keyboard"] = keyboard
             await context.bot.send_message(
                 chat_id=chat_id,
-                text=f"{format_date_for_client_interface(selected_date)}\n\n{USER_MESSAGES["select_time"]}", 
-                reply_markup=keyboard
+                text=f"{format_date_for_client_interface(selected_date)}\n\n{USER_MESSAGES["select_time"]}",
+                reply_markup=keyboard,
             )
             return USER_SELECT_TIME
 
@@ -794,7 +796,7 @@ class UserHandler:
         query = update.callback_query
         await query.answer()
         await query.delete_message()
-        chat_id = context.user_data['chat_id']
+        chat_id = context.user_data["chat_id"]
 
         if query.data == "back_to_dates":
             selected_date = context.user_data.get("date_selected")
@@ -820,7 +822,7 @@ class UserHandler:
 
             context.user_data["time_selected"] = selected_time
 
-            await self.interface.enter_name(update, context)            
+            await self.interface.enter_name(update, context)
             return USER_ENTER_NAME
 
     async def select_time_unexpected_input(
@@ -903,14 +905,15 @@ class UserHandler:
     async def confirmation(self, update: Update, context: CallbackContext):
         """Хэндлер для подтверждения или отмены записи."""
 
-        logger = setup_logger(__name__)
         query = update.callback_query
         await query.answer()
-        chat_id = context.user_data['chat_id']
+        chat_id = context.user_data["chat_id"]
         await query.delete_message()
 
         if query.data == "confirm":
-            await context.bot.send_message(chat_id=chat_id, text=USER_MESSAGES["booking_success"])
+            await context.bot.send_message(
+                chat_id=chat_id, text=USER_MESSAGES["booking_success"]
+            )
             await self.interface.proceed(update, context)
             if context.user_data["reschedule"]:
                 appointments = context.bot_data["db"].get("appointments")
@@ -938,7 +941,7 @@ class UserHandler:
                 db_success = True
             except Exception as e:
                 db_success = False
-                logger.error(f"Ошибка при записи в базу данных: {e}")
+                appointments.logger.error(f"Ошибка при записи в базу данных: {e}")
 
             if db_success:
                 notification_message += (
@@ -998,7 +1001,7 @@ class UserHandler:
             )
 
             await context.bot.send_message(
-                chat_id=context.user_data['chat_id'],
+                chat_id=context.user_data["chat_id"],
                 text=f"{USER_MESSAGES['confirm_booking']} \n {context.user_data['confirmation_message']}",
                 reply_markup=self.interface.general_keyboards["confirmation"],
             )
@@ -1035,7 +1038,7 @@ class UserHandler:
 
         query = update.callback_query
         await query.answer()
-        chat_id = context.user_data['chat_id']
+        chat_id = context.user_data["chat_id"]
         await query.delete_message()
 
         if query.data == "back_to_menu":

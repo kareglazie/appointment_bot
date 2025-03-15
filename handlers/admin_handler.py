@@ -9,6 +9,7 @@ from telegram import (
 from telegram.ext import (
     ContextTypes,
     MessageHandler,
+    CallbackContext,
     filters,
     CallbackQueryHandler,
 )
@@ -17,17 +18,21 @@ from consts.messages import ADMIN_MESSAGES
 from keyboards.admin_keyboards import *
 from keyboards.general_keyboards import *
 from states import *
-from utils.formatter import format_date_for_db, format_date_for_db_admin
+from utils.formatter import (
+    format_date_for_client_interface,
+    format_date_for_db,
+    format_date_for_db_admin,
+)
 from utils.utils import create_appointment_from_context
 
 
 class AdminHandler:
-    def __init__(self, interface):
+    def __init__(self, interface, dyn_keyboards):
         self.interface = interface
+        self.dyn_keyboards = dyn_keyboards
         self.user_data = {}
 
     def get_handlers(self):
-        pass
         return {
             ADMIN_MAIN_MENU: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, self.main_menu)
@@ -44,68 +49,48 @@ class AdminHandler:
             ADMIN_CLIENT: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, self.client)
             ],
+            SELECT_CLIENT_FROM_MULTIPLE: [
+                CallbackQueryHandler(self.select_client),
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, self.select_client_unexpected_input
+                ),
+            ],
             ADMIN_VIEW_DATES: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, self.view_dates)
             ],
+            ADMIN_SELECT_PROCEDURE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, self.select_procedure)
+            ],
+            ADMIN_SELECT_MONTH: [
+                CallbackQueryHandler(self.select_month),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, self.view_dates),
+            ],
+            ADMIN_SELECT_DATE: [
+                CallbackQueryHandler(self.select_date),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, self.view_dates),
+            ],
+            ADMIN_SELECT_TIME: [
+                CallbackQueryHandler(self.select_time),
+            ],
+            ADMIN_CONFIRMATION: [
+                CallbackQueryHandler(self.confirmation),
+            ],
+            ADMIN_AFTER_TIME_VIEW: [
+                CallbackQueryHandler(self.after_time_view),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, self.view_dates),
+            ],
+            ADMIN_VIEW_APPOINTMENTS: [
+                CallbackQueryHandler(self.view_client_appointments),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, self.client),
+            ],
+            ADMIN_APPOINTMENT_EDIT_ACTIONS: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, self.appointment_edit_actions
+                )
+            ],
         }
-        #     ADMIN_SELECT_PROCEDURE: [
-        #         MessageHandler(
-        #             filters.TEXT & ~filters.COMMAND,
-        #             self.select_procedure,
-        #         )
-        #     ],
-        #     ADMIN_SELECT_DATE: [
-        #         MessageHandler(
-        #             filters.Regex(
-        #                 "января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря"
-        #             )
-        #             & ~(
-        #                 filters.Regex("^(Следующие 7 дней)$")
-        #                 | filters.Regex("^(Назад)$")
-        #                 | filters.Regex("^(Вернуться к выбору процедуры)$")
-        #             ),
-        #             handle_admin_date_selection,
-        #         ),
-        #     ],
-        #     ADMIN_SELECT_TIME: [
-        #         MessageHandler(
-        #             filters.TEXT & ~filters.COMMAND,
-        #             handle_admin_time_selection,
-        #         )
-        #     ],
-        #     ADMIN_ENTER_CLIENT_NAME: [
-        #         MessageHandler(
-        #             filters.TEXT & ~filters.COMMAND, handle_admin_enter_client_name
-        #         )
-        #     ],
-        #     ADMIN_ENTER_CLIENT_PHONE: [
-        #         MessageHandler(
-        #             filters.TEXT & ~filters.COMMAND, handle_admin_enter_client_phone
-        #         )
-        #     ],
-        #     ADMIN_ENTER_COMMENT: [
-        #         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_admin_text_comment),
-        #         CallbackQueryHandler(handle_admin_skip_comment, pattern="^skip$"),
-        #     ],
-        #     ADMIN_CONFIRMATION: [CallbackQueryHandler(handle_admin_confirmation)],
-        #     ADMIN_AFTER_CONFIRMATION: [
-        #         MessageHandler(
-        #             filters.TEXT & ~filters.COMMAND, handle_admin_after_confirmation
-        #         )
-        #     ],
-        #     ADMIN_BLOCK_DAY: [
-        #         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_block_day),
-        #     ],
-        #     ADMIN_BLOCK_SEVERAL_DAYS: [
-        #         MessageHandler(
-        #             filters.TEXT & ~filters.COMMAND,
-        #             handle_block_several_days,
-        #         ),
-        #     ],
-        # }
 
     async def main_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-
         text = update.message.text
 
         if text == REPLY_ADMIN_BUTTONS["dates"]:
@@ -125,7 +110,6 @@ class AdminHandler:
             return ADMIN_MAIN_MENU
 
     async def dates_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-
         text = update.message.text
 
         if text == REPLY_ADMIN_BUTTONS["view_available_dates"]:
@@ -151,15 +135,319 @@ class AdminHandler:
             await self.interface.main_menu(update)
             return ADMIN_MAIN_MENU
         if text == REPLY_ADMIN_BUTTONS["select_procedure"]:
-            pass
+            await self.interface.procedures(update)
+            return ADMIN_SELECT_PROCEDURE
         if text == REPLY_ADMIN_BUTTONS["view_all_dates"]:
-            pass
+            context.user_data["procedure_selected"] = None
+            await self.interface.months(update)
+            return ADMIN_SELECT_MONTH
         else:
             await update.message.reply_text(
                 ADMIN_MESSAGES["error_try_again"],
-                reply_markup=self.interface.admin_keyboards["dates_menu"],
+                reply_markup=self.interface.admin_keyboards["view_dates"],
             )
             return ADMIN_VIEW_DATES
+
+    async def select_procedure(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
+        """Хэндлер для выбора процедуры."""
+
+        text = update.message.text
+
+        if text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
+
+        elif text in self.dyn_keyboards.procedures_buttons():
+            procedure_name = " ".join(text.split()[1:])
+            context.user_data["procedure_selected"] = procedure_name
+            context.user_data["reschedule"] = False
+
+            await update.message.reply_text(
+                text=text, reply_markup=ReplyKeyboardRemove()
+            )
+
+            await self.interface.months(update)
+            return ADMIN_SELECT_MONTH
+        else:
+            await update.message.reply_text(
+                ADMIN_MESSAGES["error_try_again"],
+                reply_markup=self.interface.general_keyboards["procedures"],
+            )
+            return USER_SELECT_PROCEDURE
+
+    async def select_month(self, update: Update, context: CallbackContext):
+        """Хэндлер для выбора месяца."""
+
+        query = update.callback_query
+        await query.answer()
+        await query.delete_message()
+        chat_id = context.user_data["chat_id"]
+        procedure = context.user_data["procedure_selected"]
+        if procedure:
+            if query.data == "back":
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=ADMIN_MESSAGES["select_procedure"],
+                    reply_markup=self.interface.general_keyboards["procedures"],
+                )
+                return ADMIN_SELECT_PROCEDURE
+        else:
+            if query.data == "back":
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=ADMIN_MESSAGES["view_dates"],
+                    reply_markup=self.interface.admin_keyboards["view_dates"],
+                )
+                return ADMIN_VIEW_DATES
+
+        if query.data.startswith("month_"):
+            month_str = query.data.replace("month_", "")
+            month, year = map(int, month_str.split("_"))
+            context.user_data["month_selected"] = (year, month)
+
+            available_dates = context.bot_data["db"]["schedule"].get_available_dates(
+                procedure=context.user_data.get("procedure_selected"),
+                target_month=context.user_data.get("month_selected"),
+            )
+
+            if available_dates:
+                keyboard = self.dyn_keyboards.date(year, month, available_dates)
+                context.user_data["date_keyboard"] = keyboard
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=ADMIN_MESSAGES["select_date"],
+                    reply_markup=keyboard,
+                )
+                return ADMIN_SELECT_DATE
+
+            else:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=ADMIN_MESSAGES["no_dates_available"],
+                    reply_markup=self.interface.general_keyboards["months"],
+                )
+                return ADMIN_SELECT_MONTH
+
+        else:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=ADMIN_MESSAGES["error_try_again"]
+                + "\n"
+                + ADMIN_MESSAGES["select_month"],
+                reply_markup=self.interface.general_keyboards["months"],
+            )
+            return ADMIN_SELECT_MONTH
+
+    async def select_date(self, update: Update, context: CallbackContext):
+        """Хэндлер для выбора даты."""
+
+        query = update.callback_query
+        await query.answer()
+        chat_id = context.user_data["chat_id"]
+
+        if query.data == "back_to_months":
+            await query.delete_message()
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=ADMIN_MESSAGES["select_month"],
+                reply_markup=self.interface.general_keyboards["months"],
+            )
+            return ADMIN_SELECT_MONTH
+
+        elif query.data.startswith("prev_month_") or query.data.startswith(
+            "next_month_"
+        ):
+            _, _, year, month = query.data.split("_")
+            year, month = int(year), int(month)
+
+            schedule = context.bot_data["db"].get("schedule")
+
+            available_dates = schedule.get_available_dates(
+                procedure=context.user_data.get("procedure_selected"),
+                target_month=(year, month),
+            )
+
+            context.user_data["month_selected"] = (year, month)
+
+            keyboard = self.dyn_keyboards.date(year, month, available_dates)
+            context.user_data["date_keyboard"] = keyboard
+
+            await query.edit_message_reply_markup(reply_markup=keyboard)
+            return ADMIN_SELECT_DATE
+
+        elif query.data.startswith("date_"):
+            await query.delete_message()
+            date_str = query.data.replace("date_", "")
+            selected_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            context.user_data["date_selected"] = selected_date
+            context.user_data["month_selected"] = (
+                selected_date.year,
+                selected_date.month,
+            )
+
+            schedule = context.bot_data["db"].get("schedule")
+            available_slots = schedule.get_available_time_slots(
+                selected_date, context.user_data.get("procedure_selected")
+            )
+
+            if not available_slots:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=ADMIN_MESSAGES["no_slots_available"],
+                    reply_markup=InlineKeyboardMarkup(
+                        [
+                            [
+                                InlineKeyboardButton(
+                                    INLINE_BUTTONS["back"],
+                                    callback_data="back_to_dates",
+                                )
+                            ]
+                        ]
+                    ),
+                )
+                return ADMIN_SELECT_DATE
+
+            keyboard = self.dyn_keyboards.time(available_slots, context)
+            context.user_data["time_keyboard"] = keyboard
+            if not context.user_data["reschedule"]:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"{format_date_for_client_interface(selected_date)}\n\n{ADMIN_MESSAGES["available_slots"]}",
+                    reply_markup=keyboard,
+                )
+                return ADMIN_AFTER_TIME_VIEW
+            else:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"{format_date_for_client_interface(selected_date)}\n\n{ADMIN_MESSAGES["select_time"]}",
+                    reply_markup=keyboard,
+                )
+                return ADMIN_SELECT_TIME
+
+    async def select_time(self, update: Update, context: CallbackContext):
+        """Хэндлер для выбора времени."""
+
+        query = update.callback_query
+        await query.answer()
+        await query.delete_message()
+        chat_id = context.user_data["chat_id"]
+
+        if query.data == "back_to_dates":
+            selected_date = context.user_data.get("date_selected")
+            if not selected_date:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=ADMIN_MESSAGES["error_try_again"],
+                    reply_markup=self.interface.admin_keyboards["main_menu"],
+                )
+                return ADMIN_MAIN_MENU
+
+            await self.interface.dates(update, context)
+            return ADMIN_SELECT_DATE
+
+        elif query.data.startswith("time_"):
+
+            time_str = query.data.replace("time_", "")
+
+            try:
+                selected_time = datetime.strptime(time_str, "%H:%M:%S").time()
+            except ValueError:
+                selected_time = datetime.strptime(time_str, "%H:%M").time()
+
+            context.user_data["time_selected"] = selected_time
+
+            confirmation_message = f"{EMOJI["sparkle"]} {context.user_data["procedure_selected"]}\n{EMOJI["calendar"]} {context.user_data["date_selected"]}\n{EMOJI["clock"]} {context.user_data["time_selected"].strftime("%H:%M")}"
+            keyboard = self.interface.general_keyboards["confirmation"]
+            context.user_data["confirmation_message"] = confirmation_message
+
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"{ADMIN_MESSAGES['confirm_booking']}\n\n{confirmation_message}",
+                reply_markup=keyboard,
+            )
+            return ADMIN_CONFIRMATION
+
+    async def confirmation(self, update: Update, context: CallbackContext):
+        """Хэндлер для подтверждения или отмены записи."""
+
+        query = update.callback_query
+        await query.answer()
+        chat_id = context.user_data["chat_id"]
+        await query.delete_message()
+
+        if query.data == "confirm":
+            if context.user_data["reschedule"]:
+                appointments = context.bot_data["db"].get("appointments")
+                appointment_id = context.user_data.get("appointment_id")
+                appointments.delete_appointment(appointment_id)
+
+            try:
+                await create_appointment_from_context(update, context)
+                db_success = True
+            except Exception as e:
+                db_success = False
+                appointments.logger.error(f"Ошибка при записи в базу данных: {e}")
+
+            if db_success:
+                if context.user_data["reschedule"]:
+                    notification_message = ADMIN_MESSAGES["appointment_updated"]
+                else:
+                    notification_message = ADMIN_MESSAGES["appointment_added"]
+            else:
+                notification_message = ADMIN_MESSAGES["db_error"]
+
+            context.user_data["reschedule"] = False
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=notification_message,
+                reply_markup=ReplyKeyboardMarkup(
+                    [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
+                    resize_keyboard=True,
+                ),
+            )
+            return ADMIN_VIEW_DATES
+
+        elif query.data == "cancel":
+            context.user_data["reschedule"] = False
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=ADMIN_MESSAGES["process_interrupted"],
+                reply_markup=ReplyKeyboardMarkup(
+                    [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
+                    resize_keyboard=True,
+                ),
+            )
+            return ADMIN_VIEW_DATES
+
+        elif query.data == "back_to_edit":
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=ADMIN_MESSAGES["select_time"],
+                reply_markup=context.user_data["time_keyboard"],
+            )
+            return ADMIN_SELECT_TIME
+
+    async def after_time_view(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        query = update.callback_query
+        await query.answer()
+        chat_id = context.user_data["chat_id"]
+        if query.data == "back_to_admin_menu":
+            await query.delete_message()
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=ADMIN_MESSAGES["hello_admin"],
+                reply_markup=self.interface.admin_keyboards["main_menu"],
+            )
+            return ADMIN_MAIN_MENU
+        else:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=ADMIN_MESSAGES["error_try_again"],
+                reply_markup=self.user_data["time_keyboard"],
+            )
+        return ADMIN_AFTER_TIME_VIEW
 
     async def clients_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Хэндлер для меню работы с разделом 'Клиенты'."""
@@ -168,7 +456,6 @@ class AdminHandler:
         if text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
             await self.interface.main_menu(update)
             return ADMIN_MAIN_MENU
-
         else:
             clients = context.bot_data["db"]["clients"]
             if clients.client_is_registered_by_phone(text):
@@ -196,37 +483,124 @@ class AdminHandler:
                         await update.message.reply_text(
                             message, parse_mode="HTML", reply_markup=reply_markup
                         )
+                        return SELECT_CLIENT_FROM_MULTIPLE
                     else:
+                        context.user_data["client_id"] = client_data[0][0]
                         client = client_data[0]
-                        message = (
-                            "<b>Данные клиента:</b>\n"
-                            f"{EMOJI['user']} <i>Имя:</i> {client[5]}\n"
-                            f"{EMOJI['phone']} <i>Телефон:</i> {client[1]}\n"
-                            f"{EMOJI['info']} <i>TG ID:</i> {client[2]}\n"
-                            f"{EMOJI['star']} <i>Username:</i> {client[3]}\n"
-                        )
+                        context.user_data["client"] = client
+                        if len(client) == 4:
+                            message = (
+                                "<b>Данные клиента:</b>\n"
+                                f"{EMOJI['user']} <i>Имя:</i> {client[1]}\n"
+                                f"{EMOJI['phone']} <i>Телефон:</i> {client[2]}\n"
+                                f"{EMOJI['star']} <i>Username:</i> {client[3]}\n"
+                            )
+                        else:
+                            message = (
+                                "<b>Данные клиента:</b>\n"
+                                f"{EMOJI['user']} <i>Имя:</i> {client[1]}\n"
+                                f"{EMOJI['phone']} <i>Телефон:</i> {client[2]}\n"
+                            )
                         await update.message.reply_text(
                             message,
                             parse_mode="HTML",
                             reply_markup=self.interface.admin_keyboards["client"],
                         )
+                        return ADMIN_CLIENT
                 else:
                     await update.message.reply_text(ADMIN_MESSAGES["client_error"])
             else:
                 await update.message.reply_text(
-                    ADMIN_MESSAGES["client_not_found"],
-                    reply_markup=self.interface.admin_keyboards["clients_menu"],
+                    text=ADMIN_MESSAGES["client_not_found"],
+                    reply_markup=ReplyKeyboardMarkup(
+                        [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
+                        resize_keyboard=True,
+                    ),
                 )
                 return ADMIN_CLIENTS_MENU
 
-    async def client(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def select_client(self, update: Update, context: CallbackContext):
+        query = update.callback_query
+        await query.answer()
+        await query.delete_message()
 
+        if query.data.startswith("select_client"):
+            client_id = query.data.split("_")[2]
+
+            context.user_data["client_id"] = client_id
+            client = context.bot_data["db"]["clients"].get_client_by_id(int(client_id))[
+                0
+            ]
+            context.user_data["client"] = client
+            if len(client) == 4:
+                message = (
+                    "<b>Данные клиента:</b>\n"
+                    f"{EMOJI['user']} <i>Имя:</i> {client[1]}\n"
+                    f"{EMOJI['phone']} <i>Телефон:</i> {client[2]}\n"
+                    f"{EMOJI['star']} <i>Username:</i> {client[3]}\n"
+                )
+            else:
+                message = (
+                    "<b>Данные клиента:</b>\n"
+                    f"{EMOJI['user']} <i>Имя:</i> {client[1]}\n"
+                    f"{EMOJI['phone']} <i>Телефон:</i> {client[2]}\n"
+                )
+            chat_id = context.user_data["chat_id"]
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=message,
+                parse_mode="HTML",
+                reply_markup=self.interface.admin_keyboards["client"],
+            )
+            return ADMIN_CLIENT
+        else:
+            await update.message.reply_text(
+                text=f"{ADMIN_MESSAGES["error_try_again"]}",
+                reply_markup=ReplyKeyboardMarkup(
+                    [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
+                    resize_keyboard=True,
+                ),
+            )
+            return ADMIN_CLIENTS_MENU
+
+    async def select_client_unexpected_input(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
         text = update.message.text
+        if text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
+        else:
+            await update.message.reply_text(
+                text=f"{ADMIN_MESSAGES["error_try_again"]}",
+                reply_markup=ReplyKeyboardMarkup(
+                    [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
+                    resize_keyboard=True,
+                ),
+            )
+            return ADMIN_CLIENTS_MENU
+
+    async def client(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        text = update.message.text
+        client_id = context.user_data["client_id"]
 
         if text == REPLY_ADMIN_BUTTONS["view_client_appointments"]:
-            pass
-        if text == REPLY_ADMIN_BUTTONS["view_client_data"]:
-            pass
+            if context.bot_data["db"]["appointments"].client_has_appointments(
+                int(client_id)
+            ):
+                await self.interface.view_appointments(update, context, int(client_id))
+                return ADMIN_VIEW_APPOINTMENTS
+
+            else:
+                await update.message.reply_text(
+                    text=f"{ADMIN_MESSAGES["client_has_no_appointments"]}",
+                    reply_markup=ReplyKeyboardMarkup(
+                        [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
+                        resize_keyboard=True,
+                    ),
+                )
+            return ADMIN_VIEW_DATES
+
         if text == REPLY_ADMIN_BUTTONS["delete_client"]:
             pass
         if text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
@@ -234,10 +608,151 @@ class AdminHandler:
             return ADMIN_MAIN_MENU
         else:
             await update.message.reply_text(
-                ADMIN_MESSAGES["error_try_again"],
-                reply_markup=self.interface.admin_keyboards["clients_menu"],
+                text=f"{ADMIN_MESSAGES["error_try_again"]}\n\n{ADMIN_MESSAGES['clients_menu']}",
+                reply_markup=ReplyKeyboardMarkup(
+                    [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
+                    resize_keyboard=True,
+                ),
             )
-            return ADMIN_CLIENT
+            return ADMIN_CLIENTS_MENU
+
+    async def view_client_appointments(self, update: Update, context: CallbackContext):
+        query = update.callback_query
+        await query.answer()
+        chat_id = context.user_data["chat_id"]
+        await query.delete_message()
+
+        if query.data.startswith("select_appointment"):
+            appointment_id = query.data.split("_")[2]
+            context.user_data["appointment_id"] = appointment_id
+
+            context.user_data["appointment_for_editing"] = [
+                appointment
+                for appointment in context.user_data["appointments_list"]
+                if appointment[0] == int(context.user_data["appointment_id"])
+            ][0]
+
+            context.user_data["procedure_selected"] = context.user_data[
+                "appointment_for_editing"
+            ][1]
+
+            procedure = context.user_data["procedure_selected"]
+            date = format_date_for_client_interface(
+                context.user_data["appointment_for_editing"][2]
+            )
+            time = context.user_data["appointment_for_editing"][3].strftime("%H:%M")
+
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"<b>Выбранная запись</b>: {procedure} - {date} - {time}.\n",
+                parse_mode="HTML",
+                reply_markup=self.interface.admin_keyboards["appointments_actions"],
+            )
+            return ADMIN_APPOINTMENT_EDIT_ACTIONS
+
+        if query.data == "back_to_menu":
+            text = ADMIN_MESSAGES["hello_admin"]
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=text,
+                reply_markup=self.interface.admin_keyboards["main_menu"],
+            )
+            return ADMIN_MAIN_MENU
+
+    async def appointment_edit_actions(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
+        text = update.message.text
+        id = context.user_data["client_id"]
+
+        procedure = context.user_data["procedure_selected"]
+        date = format_date_for_client_interface(
+            context.user_data["appointment_for_editing"][2]
+        )
+        time = context.user_data["appointment_for_editing"][3].strftime("%H:%M")
+
+        if text == REPLY_ADMIN_BUTTONS["reschedule_appointment"]:
+            context.user_data["reschedule"] = True
+            await update.message.reply_text(
+                text=f"{procedure} - {date} - {time}",
+                reply_markup=ReplyKeyboardRemove(),
+            )
+
+            await self.interface.months(update)
+            return ADMIN_SELECT_MONTH
+
+        if text == REPLY_ADMIN_BUTTONS["delete_appointment"]:
+            context.user_data["reschedule"] = False
+
+            appointment_id = int(context.user_data["appointment_id"])
+            appointments = context.bot_data["db"]["appointments"]
+
+            appointment_data = appointments.get_client_data_by_appointment_id(
+                appointment_id
+            )
+            try:
+                appointments.delete_appointment(appointment_id)
+                db_success = True
+            except Exception as e:
+                db_success = False
+                appointments.logger.error(
+                    f"Ошибка при обновлении информации в базе данных: {e}"
+                )
+            notification_message = (
+                f"{ADMIN_MESSAGES['appointment_removed']}"
+                f"{appointment_data[0]}\n"
+                f"Дата: {appointment_data[1]}\n"
+                f"Время: {appointment_data[2].strftime("%H:%M")}\n"
+                f"Телефон: {appointment_data[4]}\n"
+            )
+
+            if db_success:
+                notification_message += (
+                    f"\n{EMOJI['success']} Информация в базе данных обновлена."
+                )
+            else:
+                notification_message += (
+                    f"\n{EMOJI['sign'] * 3} Информация а базе данных не обновлена. "
+                    "Обратись к разработчику или попробуй удалить запись "
+                    "самостоятельно через админ-интерфейс бота."
+                )
+
+            await update.message.reply_text(
+                text=notification_message,
+                reply_markup=ReplyKeyboardMarkup(
+                    [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
+                    resize_keyboard=True,
+                ),
+            )
+            return ADMIN_VIEW_DATES
+
+        if text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
+            context.user_data["reschedule"] = False
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
+
+        if text == REPLY_ADMIN_BUTTONS["back_to_appointments"]:
+            context.user_data["reschedule"] = False
+            if context.bot_data["db"]["appointments"].client_has_appointments(int(id)):
+                await self.interface.view_appointments(update, context, int(id))
+                return ADMIN_VIEW_APPOINTMENTS
+            else:
+                await update.message.reply_text(
+                    text=f"{ADMIN_MESSAGES["client_has_no_appointments"]}",
+                    reply_markup=ReplyKeyboardMarkup(
+                        [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
+                        resize_keyboard=True,
+                    ),
+                )
+            return ADMIN_VIEW_DATES
+
+        else:
+            context.user_data["reschedule"] = False
+            await update.message.reply_text(
+                text=f"{ADMIN_MESSAGES["error_try_again"]}",
+                reply_markup=self.interface.admin_keyboards["appointments_actions"],
+            )
+            return ADMIN_APPOINTMENT_EDIT_ACTIONS
 
     async def appointments_menu(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE

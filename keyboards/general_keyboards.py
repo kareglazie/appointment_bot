@@ -7,6 +7,8 @@ from telegram import (
     KeyboardButton,
     ReplyKeyboardMarkup,
 )
+from telegram.ext import ContextTypes
+from config import ADMIN_IDS
 from consts.messages import EMOJI, INLINE_BUTTONS, REPLY_USER_BUTTONS
 from consts.constants import MONTHS_LOOKAHEAD, PROCEDURES_KEYBOARD
 
@@ -140,13 +142,20 @@ class GeneralKeyboards:
 
         return InlineKeyboardMarkup(keyboard)
 
-    def time(self, available_slots: List[Tuple[time, time]]) -> InlineKeyboardMarkup:
+    def time(
+        self,
+        available_slots: List[Tuple[time, time]],
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> InlineKeyboardMarkup:
         """Создает клавиатуру для выбора времени."""
         keyboard = []
 
         total_slots = len(available_slots)
 
-        max_columns = 7
+        if context.user_data["tg_id"] in ADMIN_IDS:
+            max_columns = 3
+        else:
+            max_columns = 7
 
         if total_slots <= max_columns:
             columns = total_slots
@@ -160,8 +169,12 @@ class GeneralKeyboards:
             for col_index in range(columns):
                 slot_index = row_index * columns + col_index
                 if slot_index < total_slots:
-                    start_time, _ = available_slots[slot_index]
-                    button_text = start_time.strftime("%H:%M")
+                    if context.user_data["tg_id"] in ADMIN_IDS:
+                        start_time, end_time = available_slots[slot_index]
+                        button_text = f"({start_time.strftime("%H:%M")} - {end_time.strftime("%H:%M")})"
+                    else:
+                        start_time, _ = available_slots[slot_index]
+                        button_text = start_time.strftime("%H:%M")
                     row.append(
                         InlineKeyboardButton(
                             button_text, callback_data=f"time_{start_time}"
@@ -171,13 +184,26 @@ class GeneralKeyboards:
                     row.append(InlineKeyboardButton(" ", callback_data="ignore"))
             keyboard.append(row)
 
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    INLINE_BUTTONS["back_to_dates"], callback_data="back_to_dates"
-                )
-            ]
-        )
+        if (
+            context.user_data["tg_id"] in ADMIN_IDS
+            and not context.user_data["reschedule"]
+        ):
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        INLINE_BUTTONS["back_to_admin_menu"],
+                        callback_data="back_to_admin_menu",
+                    )
+                ]
+            )
+        else:
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        INLINE_BUTTONS["back_to_dates"], callback_data="back_to_dates"
+                    )
+                ]
+            )
 
         return InlineKeyboardMarkup(keyboard)
 

@@ -16,7 +16,7 @@ def setup_bot_data(app: Application):
     user_interface = UserInterface(user_keyboards, general_keyboards)
     user_handler = UserHandler(user_interface, dyn_keyboards).get_handlers()
     admin_interface = AdminInterface(admin_keyboards, general_keyboards)
-    admin_handler = AdminHandler(admin_interface).get_handlers()
+    admin_handler = AdminHandler(admin_interface, dyn_keyboards).get_handlers()
 
     database = setup_database()
     app.bot_data["db"] = database

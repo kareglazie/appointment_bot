@@ -14,7 +14,7 @@ class Appointments:
 
     def create_appointment(
         self,
-        tg_id: int,
+        client_id: int,
         client_name: str,
         client_telephone: str,
         procedure: str,
@@ -23,7 +23,6 @@ class Appointments:
         end_time: time,
     ):
         """Добавить запись на процедуру."""
-        client_id = self.clients.get_client_id_by_tg_id(tg_id)
         query = """
             INSERT INTO Appointments (client_id, procedure, date, start_time, end_time)
             VALUES (%s, %s, %s, %s, %s)
