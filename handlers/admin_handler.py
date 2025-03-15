@@ -44,6 +44,9 @@ class AdminHandler:
             ADMIN_CLIENT: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, self.client)
             ],
+            ADMIN_VIEW_DATES: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, self.view_dates)
+            ],
         }
         #     ADMIN_SELECT_PROCEDURE: [
         #         MessageHandler(
@@ -126,7 +129,8 @@ class AdminHandler:
         text = update.message.text
 
         if text == REPLY_ADMIN_BUTTONS["view_available_dates"]:
-            pass
+            await self.interface.view_dates(update)
+            return ADMIN_VIEW_DATES
         if text == REPLY_ADMIN_BUTTONS["block_day_or_time"]:
             pass
         if text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
@@ -139,14 +143,29 @@ class AdminHandler:
             )
             return ADMIN_DATES_MENU
 
+    async def view_dates(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Хэндлер для выбора варианта просмотра доступных дат - все даты или с учетом длительности процедуры."""
+        text = update.message.text
+
+        if text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
+        if text == REPLY_ADMIN_BUTTONS["select_procedure"]:
+            pass
+        if text == REPLY_ADMIN_BUTTONS["view_all_dates"]:
+            pass
+        else:
+            await update.message.reply_text(
+                ADMIN_MESSAGES["error_try_again"],
+                reply_markup=self.interface.admin_keyboards["dates_menu"],
+            )
+            return ADMIN_VIEW_DATES
+
     async def clients_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Хэндлер для меню работы с разделом 'Клиенты'."""
         text = update.message.text
 
-        if text == REPLY_ADMIN_BUTTONS["add_client"]:
-            pass
-
-        elif text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
+        if text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
             await self.interface.main_menu(update)
             return ADMIN_MAIN_MENU
 

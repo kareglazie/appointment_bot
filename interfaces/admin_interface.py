@@ -10,6 +10,7 @@ from telegram.ext import ContextTypes
 from consts.messages import (
     ADMIN_MESSAGES,
     INLINE_BUTTONS,
+    REPLY_ADMIN_BUTTONS,
     USER_MESSAGES,
     EMOJI,
     REPLY_USER_BUTTONS,
@@ -37,13 +38,19 @@ class AdminInterface:
     async def clients_menu(self, update: Update):
         await update.message.reply_text(
             ADMIN_MESSAGES["clients_menu"],
-            reply_markup=self.admin_keyboards["clients_menu"],
+            reply_markup=KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"]),
         )
 
     async def client(self, update: Update):
         await update.message.reply_text(
             ADMIN_MESSAGES["client_data"],
             reply_markup=self.admin_keyboards["client"],
+        )
+
+    async def view_dates(self, update: Update):
+        await update.message.reply_text(
+            ADMIN_MESSAGES["view_dates"],
+            reply_markup=self.admin_keyboards["view_dates"],
         )
 
     async def add_client(self, update: Update):
@@ -70,9 +77,8 @@ class AdminInterface:
         )
 
     async def dates(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        chat_id = update.effective_chat.id
         await context.bot.send_message(
-            chat_id=chat_id,
+            chat_id=context.user_data['chat_id'],
             text=USER_MESSAGES["select_date"],
             reply_markup=context.user_data.get("date_keyboard"),
         )
@@ -103,7 +109,7 @@ class AdminInterface:
 
     async def enter_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
-            chat_id=update.effective_chat.id,
+            chat_id=context.user_data['chat_id'],
             text=USER_MESSAGES["enter_name"],
             reply_markup=ReplyKeyboardMarkup(
                 [[KeyboardButton(REPLY_USER_BUTTONS["back_to_time"])]],
@@ -152,13 +158,13 @@ class AdminInterface:
     async def proceed(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not context.user_data["reschedule"]:
             await context.bot.send_message(
-                chat_id=update.effective_chat.id,
+                chat_id=context.user_data['chat_id'],
                 text=f"Продолжим? {EMOJI['sparkle']}",
                 reply_markup=self.user_keyboards["final"],
             )
         else:
             await context.bot.send_message(
-                chat_id=update.effective_chat.id,
+                chat_id=context.user_data['chat_id'],
                 text=USER_MESSAGES["continue"],
                 reply_markup=self.user_keyboards["after_edit"],
             )
@@ -167,14 +173,14 @@ class AdminInterface:
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ):
         await context.bot.send_message(
-            chat_id=update.effective_chat.id,
+            chat_id=context.user_data['chat_id'],
             text=USER_MESSAGES["booking_cancelled"],
             reply_markup=self.user_keyboards["final"],
         )
 
     async def back_to_edit(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
-            chat_id=update.effective_chat.id,
+            chat_id=context.user_data['chat_id'],
             text=USER_MESSAGES["edit_phone"],
             reply_markup=ReplyKeyboardMarkup(
                 [[REPLY_USER_BUTTONS["back_to_name"]]], resize_keyboard=True
@@ -217,7 +223,7 @@ class AdminInterface:
             appointments_text += text
 
         await context.bot.send_message(
-            chat_id=update.effective_chat.id,
+            chat_id=context.user_data['chat_id'],
             text=appointments_text,
             parse_mode="HTML",
             reply_markup=self.user_keyboards["appointments"],
@@ -256,7 +262,7 @@ class AdminInterface:
         )
 
         await context.bot.send_message(
-            chat_id=update.effective_chat.id,
+            chat_id=context.user_data['chat_id'],
             text=USER_MESSAGES["select_appointment"],
             reply_markup=InlineKeyboardMarkup(keyboard),
         )

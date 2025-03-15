@@ -2,7 +2,7 @@ from concurrent_log_handler import ConcurrentRotatingFileHandler
 import logging
 
 
-def setup_logger(name, level=logging.DEBUG):
+def setup_logger(name, level=logging.INFO):
     """Настройка базового логгера с выводом в файл и консоль с ротацией файла."""
 
     logger = logging.getLogger(name)

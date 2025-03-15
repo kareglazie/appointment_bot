@@ -8,6 +8,8 @@ async def basic_context_update(update: Update, context: ContextTypes.DEFAULT_TYP
     """Обновить контекст с основными данными пользователя."""
     tg_id = update.effective_user.id
     context.user_data["tg_id"] = tg_id
+    chat_id = update.effective_chat.id
+    context.user_data["chat_id"] = chat_id
     tg_username = update.effective_user.username
     context.user_data["tg_username"] = tg_username
     tg_first_name = update.effective_user.first_name
