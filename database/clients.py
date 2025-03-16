@@ -37,6 +37,21 @@ class Clients:
         except Exception as e:
             self.logger.error(f"Ошибка при добавлении клиента: {e}")
 
+    def delete_client_by_id(self, client_id: int) -> bool:
+        """
+        Удалить клиента по его ID.
+        Возвращает True, если клиент был удален, иначе False.
+        """
+        query = "DELETE FROM Clients WHERE id = %s"
+
+        try:
+            self.db.execute_query(query, client_id)
+            self.logger.debug(f"Клиент с ID {client_id} успешно удален.")
+            return True
+        except Exception as e:
+            self.logger.error(f"Ошибка при удалении клиента с ID {client_id}: {e}")
+            return False
+
     def get_client_by_telephone(self, telephone: str) -> Optional[List[Tuple]]:
         """Получить данные о клиенте по его номеру телефона."""
         query = "SELECT * FROM Clients WHERE telephone = %s"

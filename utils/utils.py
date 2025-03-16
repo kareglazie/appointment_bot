@@ -36,7 +36,6 @@ async def create_appointment_from_context(
         phone = context.user_data["phone"]
 
         clients = context.bot_data["db"]["clients"]
-        client_id = clients.get_client_id_by_tg_id(tg_id)
 
         clients.add_client(
             tg_id=tg_id,
@@ -45,6 +44,8 @@ async def create_appointment_from_context(
             name=name,
             telephone=phone,
         )
+
+        client_id = clients.get_client_id_by_tg_id(tg_id)
 
         appointments.create_appointment(
             client_id=client_id,

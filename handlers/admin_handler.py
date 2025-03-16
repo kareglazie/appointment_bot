@@ -14,12 +14,14 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 
+from consts.constants import DATE_RANGE_PATTERN, SINGLE_DATE_PATTERN, TIME_PATTERN
 from consts.messages import ADMIN_MESSAGES
 from keyboards.admin_keyboards import *
 from keyboards.general_keyboards import *
 from states import *
 from utils.formatter import (
     format_date_for_client_interface,
+    format_date_for_keyboard,
     format_date_for_db,
     format_date_for_db_admin,
 )
@@ -88,6 +90,16 @@ class AdminHandler:
                     filters.TEXT & ~filters.COMMAND, self.appointment_edit_actions
                 )
             ],
+            ADMIN_DELETE_CLIENT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, self.delete_client)
+            ],
+            ADMIN_BLOCK: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.block)],
+            ADMIN_BLOCK_DAY_OR_TIME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, self.block_day_or_time)
+            ],
+            ADMIN_BLOCK_TIME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, self.block_time)
+            ],
         }
 
     async def main_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -116,7 +128,8 @@ class AdminHandler:
             await self.interface.view_dates(update)
             return ADMIN_VIEW_DATES
         if text == REPLY_ADMIN_BUTTONS["block_day_or_time"]:
-            pass
+            await self.interface.enter_block_days(update)
+            return ADMIN_BLOCK
         if text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
             await self.interface.main_menu(update)
             return ADMIN_MAIN_MENU
@@ -126,6 +139,300 @@ class AdminHandler:
                 reply_markup=self.interface.admin_keyboards["dates_menu"],
             )
             return ADMIN_DATES_MENU
+
+    @staticmethod
+    def is_date_valid(input_date: date) -> tuple[bool, str]:
+        """
+        Проверяет, находится ли дата в допустимом диапазоне.
+        Возвращает кортеж (bool, str):
+        - True, если дата допустима.
+        - False и сообщение об ошибке, если дата недопустима.
+        """
+        today = date.today()
+        six_months_later = today + timedelta(days=180)
+
+        if input_date < today:
+            return False, ADMIN_MESSAGES["day_too_far_past"]
+        elif input_date > six_months_later:
+            return False, ADMIN_MESSAGES["day_too_far_future"]
+        else:
+            return True, ""
+
+    @staticmethod
+    def is_date_correct(input_date: date) -> bool:
+        """
+        Проверяет, является ли дата корректной:
+        - Проверяет количество дней в месяце.
+        - Проверяет високосные годы для 29 февраля.
+        Возвращает True, если дата корректна, иначе False.
+        """
+        try:
+            input_date.replace(day=input_date.day)
+            return True
+        except ValueError:
+            return False
+
+    @staticmethod
+    def parse_date(date_str: str) -> date:
+        """
+        Преобразует строку в объект date.
+        Поддерживает форматы: ДД.ММ.ГГГГ и ДД/ММ/ГГГГ.
+        """
+        date = date_str.replace(" ", "")
+        date = date_str.replace("/", ".")
+
+        return datetime.strptime(date, "%d.%m.%Y").date()
+
+    @staticmethod
+    def parse_time(time_str: str) -> time:
+        """
+        Преобразует строку в объект time.
+        Формат: HH:MM.
+        """
+        time = time_str.replace(" ", "")
+        start_time, end_time = time.split("-")
+        try:
+            return (
+                datetime.strptime(start_time, "%H:%M").time(),
+                datetime.strptime(end_time, "%H:%M").time(),
+            )
+        except ValueError:
+            raise ValueError("Неверный формат времени. Используйте HH:MM.")
+
+    async def block(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Хэндлер для обработки ввода даты или дат для блокировки."""
+        text = update.message.text
+
+        if text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
+
+        if DATE_RANGE_PATTERN.match(text):
+            text = text.replace(" ", "")
+            text = text.replace("/", ".")
+            start_date_str, end_date_str = text.split("-")
+            logger = context.bot_data["db"]["blocked_slots"].logger
+
+            try:
+                print(text)
+                start_date = self.parse_date(start_date_str)
+                end_date = self.parse_date(end_date_str)
+            except ValueError:
+                print("error")
+                await self.interface.invalid_date_format(update)
+                return ADMIN_BLOCK
+
+            if not self.is_date_correct(start_date):
+                await self.interface.error_back_to_menu(
+                    update, f"Некорректная дата: {start_date_str}"
+                )
+                return ADMIN_BLOCK
+
+            if start_date > end_date:
+                await self.interface.error_back_to_menu(
+                    update, ADMIN_MESSAGES["invalid_date_range"]
+                )
+                return ADMIN_BLOCK
+
+            start_is_valid, start_error_message = self.is_date_valid(start_date)
+            end_is_valid, end_error_message = self.is_date_valid(end_date)
+
+            if not start_is_valid or not end_is_valid:
+                error_message = (
+                    start_error_message if not start_is_valid else end_error_message
+                )
+                if error_message == ADMIN_MESSAGES["day_too_far_past"]:
+                    error_message = ADMIN_MESSAGES["days_too_far_past"]
+                else:
+                    error_message = ADMIN_MESSAGES["days_too_far_future"]
+                await self.interface.error_back_to_menu(update, error_message)
+                return ADMIN_BLOCK
+
+            current_date = start_date
+            while current_date <= end_date:
+                if current_date.weekday() == 6:
+                    logger.debug(
+                        f"Пропуск воскресенья: {current_date.strftime('%d.%m.%Y')}"
+                    )
+                    current_date += timedelta(days=1)
+                    continue
+
+                if context.bot_data["db"]["blocked_slots"].is_day_blocked(current_date):
+                    logger.debug(
+                        f"День {current_date.strftime('%d.%m.%Y')} уже заблокирован."
+                    )
+                    current_date += timedelta(days=1)
+                    continue
+
+                success = context.bot_data["db"]["blocked_slots"].block_day(
+                    current_date
+                )
+                if not success:
+                    await self.interface.error_back_to_menu(
+                        update,
+                        f"Ошибка при блокировке дня {current_date.strftime('%d.%m.%Y')}.",
+                    )
+                    return ADMIN_BLOCK
+
+                logger.debug(f"День {current_date.strftime('%d.%m.%Y')} заблокирован.")
+                current_date += timedelta(days=1)
+
+            await update.message.reply_text(
+                text=f"{ADMIN_MESSAGES['days_blocked']}\n{start_date_str}-{end_date_str}"
+            )
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
+
+        elif SINGLE_DATE_PATTERN.match(text):
+            try:
+                date = self.parse_date(text)
+            except ValueError:
+                await self.interface.invalid_date_format(update)
+                return ADMIN_BLOCK
+
+            if not self.is_date_correct(date):
+                await self.interface.error_back_to_menu(
+                    update, f"Некорректная дата: {text}"
+                )
+                return ADMIN_BLOCK
+
+            is_valid, error_message = self.is_date_valid(date)
+            if not is_valid:
+                await self.interface.error_back_to_menu(update, error_message)
+                return ADMIN_BLOCK
+
+            if date.weekday() == 6:
+                await self.interface.day_is_sunday(update, date=text)
+                await self.interface.main_menu(update)
+                return ADMIN_MAIN_MENU
+
+            is_day_blocked = context.bot_data["db"]["blocked_slots"].is_day_blocked(
+                date
+            )
+            if is_day_blocked:
+                await self.interface.day_already_blocked(update, text)
+                await self.interface.main_menu(update)
+                return ADMIN_MAIN_MENU
+
+            context.user_data["single_date"] = text
+            context.user_data["date_obj"] = date
+
+            await self.interface.block_day_or_time(update)
+            return ADMIN_BLOCK_DAY_OR_TIME
+
+        else:
+            await self.interface.invalid_date_format(update)
+            return ADMIN_BLOCK
+
+    async def block_day_or_time(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
+        text = update.message.text
+        if text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
+        if text == REPLY_ADMIN_BUTTONS["block_whole_day"]:
+            date = context.user_data["date_obj"]
+            blocked_slots = context.bot_data["db"]["blocked_slots"]
+            if blocked_slots.block_day(date):
+                await update.message.reply_text(
+                    text=f"День {context.user_data['single_date']} заблокирован."
+                )
+                await self.interface.main_menu(update)
+                return ADMIN_MAIN_MENU
+            else:
+                await update.message.reply_text(text=ADMIN_MESSAGES["db_error"])
+                await self.interface.main_menu(update)
+                return ADMIN_MAIN_MENU
+
+        if text == REPLY_ADMIN_BUTTONS["select_time"]:
+            date = context.user_data["date_obj"]
+            available_slots = context.bot_data["db"][
+                "schedule"
+            ].get_available_time_slots(date)
+
+            if not available_slots:
+                await update.message.reply_text(text=ADMIN_MESSAGES["all_day_occupied"])
+                await self.interface.block_day_or_time(update)
+                return ADMIN_BLOCK
+
+            message = f"<b>{context.user_data['single_date']}\n{ADMIN_MESSAGES["available_slots"]}</b>\n"
+            slots_list = []
+            for start_time, end_time in available_slots:
+                slot_text = (
+                    f"{start_time.strftime('%H:%M')}-{end_time.strftime('%H:%M')}"
+                )
+                slots_list.append(slot_text)
+
+            message += "\n".join(slots_list)
+
+            keyboard = [[REPLY_ADMIN_BUTTONS["back_to_menu"]]]
+            reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+            await update.message.reply_text(
+                text=f"{message}\n\n{ADMIN_MESSAGES['enter_time_for_block']}",
+                parse_mode="HTML",
+                reply_markup=reply_markup,
+            )
+            return ADMIN_BLOCK_TIME
+
+        else:
+            await update.message.reply_text(ADMIN_MESSAGES["error_try_again"])
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
+
+    async def block_time(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Хендлер для блокировки временного слота."""
+
+        text = update.message.text
+        if text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
+
+        if TIME_PATTERN.match(text):
+            try:
+                start_time, end_time = self.parse_time(text)
+
+                if not (0 <= start_time.hour <= 23 and 0 <= start_time.minute <= 59):
+                    await self.interface.invalid_time_format(update)
+                    return ADMIN_BLOCK_TIME
+
+                if start_time >= end_time:
+                    await update.message.reply_text(
+                        text=f"{ADMIN_MESSAGES['invalid_time_range']}\n\n{ADMIN_MESSAGES['enter_time_for_block']}",
+                        parse_mode="HTML",
+                    )
+                    return ADMIN_BLOCK_TIME
+
+                context.user_data["time_to_display"] = text.replace(" ", "")
+                context.user_data["time_to_block"] = (start_time, end_time)
+
+                date = context.user_data["date_obj"]
+
+                if context.bot_data["db"]["blocked_slots"].block_time_slot(
+                    date, start_time, end_time
+                ):
+                    await update.message.reply_text(
+                        text=f"{ADMIN_MESSAGES['time_blocked']}\n{context.user_data['single_date']}\n{context.user_data['time_to_display']}"
+                    )
+                    await self.interface.main_menu(update)
+                    return ADMIN_MAIN_MENU
+                else:
+                    await update.message.reply_text(text=ADMIN_MESSAGES["db_error"])
+                    await self.interface.main_menu(update)
+                    return ADMIN_MAIN_MENU
+
+            except Exception as e:
+                self.logger.error(f"Ошибка при блокировке временного слота: {e}")
+                await update.message.reply_text(
+                    text=f"{ADMIN_MESSAGES['invalid_time_format_or_digit']}\n\n{ADMIN_MESSAGES['enter_time_for_block']}",
+                    parse_mode="HTML",
+                )
+                return ADMIN_BLOCK_TIME
+
+        else:
+            await self.interface.invalid_time_format(update)
+            return ADMIN_BLOCK_TIME
 
     async def view_dates(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Хэндлер для выбора варианта просмотра доступных дат - все даты или с учетом длительности процедуры."""
@@ -314,14 +621,14 @@ class AdminHandler:
             if not context.user_data["reschedule"]:
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"{format_date_for_client_interface(selected_date)}\n\n{ADMIN_MESSAGES["available_slots"]}",
+                    text=f"{format_date_for_keyboard(selected_date)}\n\n{ADMIN_MESSAGES["available_slots"]}",
                     reply_markup=keyboard,
                 )
                 return ADMIN_AFTER_TIME_VIEW
             else:
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"{format_date_for_client_interface(selected_date)}\n\n{ADMIN_MESSAGES["select_time"]}",
+                    text=f"{format_date_for_keyboard(selected_date)}\n\n{ADMIN_MESSAGES["select_time"]}",
                     reply_markup=keyboard,
                 )
                 return ADMIN_SELECT_TIME
@@ -402,24 +709,20 @@ class AdminHandler:
             await context.bot.send_message(
                 chat_id=chat_id,
                 text=notification_message,
-                reply_markup=ReplyKeyboardMarkup(
-                    [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
-                    resize_keyboard=True,
-                ),
+                reply_markup=ReplyKeyboardRemove(),
             )
-            return ADMIN_VIEW_DATES
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
 
         elif query.data == "cancel":
             context.user_data["reschedule"] = False
             await context.bot.send_message(
                 chat_id=chat_id,
                 text=ADMIN_MESSAGES["process_interrupted"],
-                reply_markup=ReplyKeyboardMarkup(
-                    [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
-                    resize_keyboard=True,
-                ),
+                reply_markup=ReplyKeyboardRemove(),
             )
-            return ADMIN_VIEW_DATES
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
 
         elif query.data == "back_to_edit":
             await context.bot.send_message(
@@ -485,9 +788,12 @@ class AdminHandler:
                         )
                         return SELECT_CLIENT_FROM_MULTIPLE
                     else:
-                        context.user_data["client_id"] = client_data[0][0]
-                        client = client_data[0]
+                        client_id = client_data[0][0]
+                        context.user_data["client_id"] = client_id
+                        clients = context.bot_data["db"]["clients"]
+                        client = clients.get_client_by_id(int(client_id))[0]
                         context.user_data["client"] = client
+
                         if len(client) == 4:
                             message = (
                                 "<b>Данные клиента:</b>\n"
@@ -512,12 +818,10 @@ class AdminHandler:
             else:
                 await update.message.reply_text(
                     text=ADMIN_MESSAGES["client_not_found"],
-                    reply_markup=ReplyKeyboardMarkup(
-                        [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
-                        resize_keyboard=True,
-                    ),
+                    reply_markup=ReplyKeyboardRemove(),
                 )
-                return ADMIN_CLIENTS_MENU
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
 
     async def select_client(self, update: Update, context: CallbackContext):
         query = update.callback_query
@@ -528,9 +832,8 @@ class AdminHandler:
             client_id = query.data.split("_")[2]
 
             context.user_data["client_id"] = client_id
-            client = context.bot_data["db"]["clients"].get_client_by_id(int(client_id))[
-                0
-            ]
+            clients = context.bot_data["db"]["clients"]
+            client = clients.get_client_by_id(int(client_id))[0]
             context.user_data["client"] = client
             if len(client) == 4:
                 message = (
@@ -556,12 +859,10 @@ class AdminHandler:
         else:
             await update.message.reply_text(
                 text=f"{ADMIN_MESSAGES["error_try_again"]}",
-                reply_markup=ReplyKeyboardMarkup(
-                    [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
-                    resize_keyboard=True,
-                ),
+                reply_markup=ReplyKeyboardRemove(),
             )
-            return ADMIN_CLIENTS_MENU
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
 
     async def select_client_unexpected_input(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -573,12 +874,10 @@ class AdminHandler:
         else:
             await update.message.reply_text(
                 text=f"{ADMIN_MESSAGES["error_try_again"]}",
-                reply_markup=ReplyKeyboardMarkup(
-                    [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
-                    resize_keyboard=True,
-                ),
+                reply_markup=ReplyKeyboardRemove(),
             )
-            return ADMIN_CLIENTS_MENU
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
 
     async def client(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = update.message.text
@@ -594,27 +893,71 @@ class AdminHandler:
             else:
                 await update.message.reply_text(
                     text=f"{ADMIN_MESSAGES["client_has_no_appointments"]}",
-                    reply_markup=ReplyKeyboardMarkup(
-                        [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
-                        resize_keyboard=True,
-                    ),
+                    reply_markup=ReplyKeyboardRemove(),
                 )
-            return ADMIN_VIEW_DATES
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
 
         if text == REPLY_ADMIN_BUTTONS["delete_client"]:
-            pass
+            client = context.user_data["client"]
+            message = (
+                f"{EMOJI['sign']}Удалить клиента {client[1]} с телефоном {client[2]}?"
+            )
+            await update.message.reply_text(
+                text=message,
+                reply_markup=self.interface.admin_keyboards["delete_client"],
+            )
+            return ADMIN_DELETE_CLIENT
+
         if text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
             await self.interface.main_menu(update)
             return ADMIN_MAIN_MENU
+
         else:
             await update.message.reply_text(
-                text=f"{ADMIN_MESSAGES["error_try_again"]}\n\n{ADMIN_MESSAGES['clients_menu']}",
-                reply_markup=ReplyKeyboardMarkup(
-                    [[KeyboardButton(REPLY_ADMIN_BUTTONS["back_to_menu"])]],
-                    resize_keyboard=True,
-                ),
+                text=f"{ADMIN_MESSAGES["error_try_again"]}",
+                reply_markup=ReplyKeyboardRemove(),
             )
-            return ADMIN_CLIENTS_MENU
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
+
+    async def delete_client(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        text = update.message.text
+        if text == REPLY_ADMIN_BUTTONS["delete"]:
+            client_id = context.user_data["client_id"]
+            if context.bot_data["db"]["clients"].delete_client_by_id(int(client_id)):
+                await update.message.reply_text(
+                    text=f"{ADMIN_MESSAGES["client_deleted"]}",
+                    reply_markup=ReplyKeyboardRemove(),
+                )
+                await self.interface.main_menu(update)
+                return ADMIN_MAIN_MENU
+            else:
+                await update.message.reply_text(
+                    text=f"{ADMIN_MESSAGES["db_error"]}",
+                    reply_markup=ReplyKeyboardRemove(),
+                )
+                await self.interface.main_menu(update)
+                return ADMIN_MAIN_MENU
+
+        elif text == REPLY_ADMIN_BUTTONS["dont_delete_back_to_menu"]:
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
+
+        elif text == REPLY_ADMIN_BUTTONS["back_to_menu"]:
+            await self.interface.main_menu(update)
+            return ADMIN_MAIN_MENU
+
+        else:
+            client = context.user_data["client"]
+            message = (
+                f"{EMOJI['sign']} Удалить клиента {client[1]} с телефоном {client[2]}?"
+            )
+            await update.message.reply_text(
+                text=f"{ADMIN_MESSAGES["error_try_again"]}\n\n{message}",
+                reply_markup=self.interface.admin_keyboards["delete_client"],
+            )
+            return ADMIN_DELETE_CLIENT
 
     async def view_client_appointments(self, update: Update, context: CallbackContext):
         query = update.callback_query
@@ -637,7 +980,7 @@ class AdminHandler:
             ][1]
 
             procedure = context.user_data["procedure_selected"]
-            date = format_date_for_client_interface(
+            date = format_date_for_keyboard(
                 context.user_data["appointment_for_editing"][2]
             )
             time = context.user_data["appointment_for_editing"][3].strftime("%H:%M")
@@ -666,9 +1009,7 @@ class AdminHandler:
         id = context.user_data["client_id"]
 
         procedure = context.user_data["procedure_selected"]
-        date = format_date_for_client_interface(
-            context.user_data["appointment_for_editing"][2]
-        )
+        date = format_date_for_keyboard(context.user_data["appointment_for_editing"][2])
         time = context.user_data["appointment_for_editing"][3].strftime("%H:%M")
 
         if text == REPLY_ADMIN_BUTTONS["reschedule_appointment"]:
@@ -703,19 +1044,13 @@ class AdminHandler:
                 f"{appointment_data[0]}\n"
                 f"Дата: {appointment_data[1]}\n"
                 f"Время: {appointment_data[2].strftime("%H:%M")}\n"
-                f"Телефон: {appointment_data[4]}\n"
+                f"Телефон: {appointment_data[4]}\n\n"
             )
 
             if db_success:
-                notification_message += (
-                    f"\n{EMOJI['success']} Информация в базе данных обновлена."
-                )
+                notification_message += ADMIN_MESSAGES["db_success"]
             else:
-                notification_message += (
-                    f"\n{EMOJI['sign'] * 3} Информация а базе данных не обновлена. "
-                    "Обратись к разработчику или попробуй удалить запись "
-                    "самостоятельно через админ-интерфейс бота."
-                )
+                notification_message += ADMIN_MESSAGES["db_error"]
 
             await update.message.reply_text(
                 text=notification_message,

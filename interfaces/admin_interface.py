@@ -161,6 +161,65 @@ class AdminInterface:
             ),
         )
 
+    async def enter_block_days(self, update: Update):
+        await update.message.reply_text(
+            ADMIN_MESSAGES["enter_day_or_days_for_block"],
+            parse_mode="HTML",
+            reply_markup=ReplyKeyboardMarkup(
+                [[REPLY_ADMIN_BUTTONS["back_to_menu"]]], resize_keyboard=True
+            ),
+        )
+
+    async def block_day_or_time(self, update: Update):
+        await update.message.reply_text(
+            ADMIN_MESSAGES["block_day_or_time_question"],
+            reply_markup=self.admin_keyboards["block_day"],
+        )
+
+    async def invalid_date_format(self, update: Update):
+        keyboard = [[REPLY_ADMIN_BUTTONS["back_to_menu"]]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await update.message.reply_text(
+            ADMIN_MESSAGES["invalid_date_format_or_day"],
+            parse_mode="HTML",
+            reply_markup=reply_markup,
+        )
+
+    async def invalid_time_format(self, update: Update):
+        keyboard = [[REPLY_ADMIN_BUTTONS["back_to_menu"]]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await update.message.reply_text(
+            ADMIN_MESSAGES["invalid_time_format_or_digit"],
+            parse_mode="HTML",
+            reply_markup=reply_markup,
+        )
+
+    async def error_back_to_menu(
+        self, update: Update, error_message: str = ADMIN_MESSAGES["error_try_again"]
+    ):
+        keyboard = [[REPLY_ADMIN_BUTTONS["back_to_menu"]]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await update.message.reply_text(
+            error_message,
+            reply_markup=reply_markup,
+        )
+
+    async def day_already_blocked(self, update: Update, date: str):
+        keyboard = [[REPLY_ADMIN_BUTTONS["back_to_menu"]]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await update.message.reply_text(
+            text=f"{EMOJI['star']} День {date} уже заблокирован",
+            reply_markup=reply_markup,
+        )
+
+    async def day_is_sunday(self, update: Update, date: str):
+        keyboard = [[REPLY_ADMIN_BUTTONS["back_to_menu"]]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await update.message.reply_text(
+            text=f"{EMOJI['blue_heart']} {date} - это воскресенье. Забыла? У тебя выходной!",
+            reply_markup=reply_markup,
+        )
+
     # async def appointments(
     #     self, update: Update, context: ContextTypes.DEFAULT_TYPE, client_id: int
     # ):

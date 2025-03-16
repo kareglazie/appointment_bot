@@ -17,6 +17,8 @@ class AdminKeyboards:
             "client": self.client(),
             "view_dates": self.view_dates(),
             "appointments_actions": self.appointments_actions(),
+            "delete_client": self.delete_client(),
+            "block_day": self.block_day(),
         }
 
     def main_menu(self) -> ReplyKeyboardMarkup:
@@ -80,9 +82,28 @@ class AdminKeyboards:
             keyboard, resize_keyboard=True, one_time_keyboard=True
         )
 
+    def delete_client(self) -> ReplyKeyboardMarkup:
+        keyboard = [
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["delete"])],
+            [KeyboardButton(REPLY_ADMIN_BUTTONS["dont_delete_back_to_menu"])],
+        ]
+        return ReplyKeyboardMarkup(
+            keyboard, resize_keyboard=True, one_time_keyboard=True
+        )
+
     def admin_final_keyboard(self) -> ReplyKeyboardMarkup:
         return ReplyKeyboardMarkup(
             [[REPLY_ADMIN_BUTTONS["back_to_menu"]]],
             resize_keyboard=True,
             one_time_keyboard=True,
+        )
+
+    def block_day(self) -> ReplyKeyboardMarkup:
+        keyboard = [
+            [REPLY_ADMIN_BUTTONS["block_whole_day"]],
+            [REPLY_ADMIN_BUTTONS["select_time"]],
+            [REPLY_ADMIN_BUTTONS["back_to_menu"]],
+        ]
+        return ReplyKeyboardMarkup(
+            keyboard, resize_keyboard=True, one_time_keyboard=True
         )

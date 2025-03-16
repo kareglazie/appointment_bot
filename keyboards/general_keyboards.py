@@ -153,9 +153,9 @@ class GeneralKeyboards:
         total_slots = len(available_slots)
 
         if context.user_data["tg_id"] in ADMIN_IDS:
-            max_columns = 3
+            max_columns = 2
         else:
-            max_columns = 7
+            max_columns = 5
 
         if total_slots <= max_columns:
             columns = total_slots
