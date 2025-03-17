@@ -401,9 +401,7 @@ class UserHandler:
         text = update.message.text
 
         if text == REPLY_USER_BUTTONS["reschedule_or_cancel"]:
-            await self.interface.edit_appointments(
-                update, context, context.user_data["id"]
-            )
+            await self.interface.edit_appointments(context)
             return USER_SELECT_APPOINTMENT_FOR_CANCEL_OR_RESCHEDULE
 
         if text == REPLY_USER_BUTTONS["back_to_profile"]:
@@ -468,9 +466,7 @@ class UserHandler:
             return USER_CLIENT_ACCOUNT
 
         elif query.data == "back_to_menu":
-            await self.interface.edit_appointments(
-                update, context, context.user_data["id"]
-            )
+            await self.interface.edit_appointments(context)
             await context.bot.send_message(
                 chat_id=chat_id,
                 text=USER_MESSAGES["on_return_to_menu"],
@@ -484,9 +480,7 @@ class UserHandler:
         text = update.message.text
 
         if text == REPLY_USER_BUTTONS["reschedule_or_cancel"]:
-            await self.interface.edit_appointments(
-                update, context, context.user_data["id"]
-            )
+            await self.interface.edit_appointments(context)
             return USER_SELECT_APPOINTMENT_FOR_CANCEL_OR_RESCHEDULE
 
         if text == REPLY_USER_BUTTONS["back_to_profile"]:
@@ -502,9 +496,7 @@ class UserHandler:
                 chat_id=update.effective_chat.id, text=USER_MESSAGES["error_try_again"]
             )
 
-            await self.interface.edit_appointments(
-                update, context, context.user_data["id"]
-            )
+            await self.interface.edit_appointments(context)
             return USER_SELECT_APPOINTMENT_FOR_CANCEL_OR_RESCHEDULE
 
     async def appointment_edit_actions(
@@ -585,9 +577,7 @@ class UserHandler:
 
         if text == REPLY_USER_BUTTONS["to_my_appointments"]:
             context.user_data["reschedule"] = False
-            await self.interface.edit_appointments(
-                update, context, context.user_data["id"]
-            )
+            await self.interface.edit_appointments(context)
             return USER_SELECT_APPOINTMENT_FOR_CANCEL_OR_RESCHEDULE
 
         else:
@@ -661,7 +651,9 @@ class UserHandler:
             )
 
             if available_dates:
-                keyboard = self.dyn_keyboards.date(year, month, available_dates)
+                keyboard = self.dyn_keyboards.date(
+                    year, month, available_dates, context.user_data["tg_id"]
+                )
                 context.user_data["date_keyboard"] = keyboard
                 await context.bot.send_message(
                     chat_id=chat_id,
@@ -732,7 +724,9 @@ class UserHandler:
 
             context.user_data["month_selected"] = (year, month)
 
-            keyboard = self.dyn_keyboards.date(year, month, available_dates)
+            keyboard = self.dyn_keyboards.date(
+                year, month, available_dates, context.user_data["tg_id"]
+            )
             context.user_data["date_keyboard"] = keyboard
 
             await query.edit_message_reply_markup(reply_markup=keyboard)
@@ -808,7 +802,7 @@ class UserHandler:
                 )
                 return USER_SELECT_PROCEDURE
 
-            await self.interface.dates(update, context)
+            await self.interface.dates(context)
             return USER_SELECT_DATE
 
         elif query.data.startswith("time_"):
@@ -822,7 +816,7 @@ class UserHandler:
 
             context.user_data["time_selected"] = selected_time
 
-            await self.interface.enter_name(update, context)
+            await self.interface.enter_name(context)
             return USER_ENTER_NAME
 
     async def select_time_unexpected_input(
@@ -869,7 +863,7 @@ class UserHandler:
         text = update.message.text
 
         if text == REPLY_USER_BUTTONS["back_to_name"]:
-            await self.interface.enter_name(update, context)
+            await self.interface.enter_name(context)
             return USER_ENTER_NAME
         else:
             phone = text
@@ -914,7 +908,7 @@ class UserHandler:
             await context.bot.send_message(
                 chat_id=chat_id, text=USER_MESSAGES["booking_success"]
             )
-            await self.interface.proceed(update, context)
+            await self.interface.proceed(context)
             if context.user_data["reschedule"]:
                 appointments = context.bot_data["db"].get("appointments")
                 appointment_id = context.user_data.get("appointment_id")
@@ -966,7 +960,7 @@ class UserHandler:
 
         elif query.data == "cancel":
             if not context.user_data["reschedule"]:
-                await self.interface.booking_cancelled(update, context)
+                await self.interface.booking_cancelled(context)
                 return USER_AFTER_CONFIRMATION
             else:
                 context.user_data["reschedule"] = False
@@ -978,7 +972,7 @@ class UserHandler:
                 return USER_AFTER_EDIT
 
         elif query.data == "back_to_edit":
-            await self.interface.back_to_edit(update, context)
+            await self.interface.back_to_edit(context)
             return USER_ENTER_PHONE
 
     async def confirmation_unexpected_input(
@@ -992,7 +986,7 @@ class UserHandler:
             return USER_ENTER_PHONE
 
         if text == REPLY_USER_BUTTONS["back_to_name"]:
-            await self.interface.enter_name(update, context)
+            await self.interface.enter_name(context)
             return USER_ENTER_NAME
 
         else:

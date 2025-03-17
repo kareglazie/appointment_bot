@@ -25,8 +25,29 @@ async def create_appointment_from_context(
     date_selected = context.user_data["date_selected"]
     time_selected = context.user_data["time_selected"]
     procedure_duration = timedelta(minutes=PROCEDURES.get(procedure_name))
-    end_time = datetime.combine(date_selected, time_selected) + procedure_duration
+
+    if isinstance(time_selected, str):
+        try:
+            if len(time_selected.split(":")) == 3:
+                time_selected = datetime.strptime(time_selected, "%H:%M:%S").time()
+            else:
+                time_selected = datetime.strptime(time_selected, "%H:%M").time()
+        except ValueError as e:
+            print(f"Ошибка при преобразовании времени: {e}")
+            return
+
+    if isinstance(date_selected, str):
+        try:
+            date_selected = datetime.strptime(date_selected, "%Y-%m-%d").date()
+        except ValueError as e:
+            print(f"Ошибка при преобразовании даты: {e}")
+            return
+
+    start_datetime = datetime.combine(date_selected, time_selected)
+    end_time = start_datetime + procedure_duration
+
     appointments = context.bot_data["db"]["appointments"]
+    clients = context.bot_data["db"]["clients"]
 
     if not context.user_data["tg_id"] in ADMIN_IDS:
         tg_id = int(context.user_data["tg_id"])
@@ -34,8 +55,6 @@ async def create_appointment_from_context(
         tg_first_name = context.user_data["tg_first_name"]
         name = context.user_data["name"]
         phone = context.user_data["phone"]
-
-        clients = context.bot_data["db"]["clients"]
 
         clients.add_client(
             tg_id=tg_id,
@@ -47,26 +66,45 @@ async def create_appointment_from_context(
 
         client_id = clients.get_client_id_by_tg_id(tg_id)
 
-        appointments.create_appointment(
-            client_id=client_id,
-            client_name=name,
-            client_telephone=phone,
-            procedure=procedure_name,
-            date=date_selected,
-            start_time=time_selected,
-            end_time=end_time.time(),
-        )
-
     else:
-        name = context.user_data["client"][1]
-        phone = context.user_data["client"][2]
+        try:
+            name = context.user_data["client"][1]
+            phone = context.user_data["client"][2]
+        except:
+            name = context.user_data["name"]
+            phone = context.user_data["phone"]
 
-        appointments.create_appointment(
-            client_id=context.user_data["client_id"],
-            client_name=name,
-            client_telephone=phone,
-            procedure=procedure_name,
-            date=date_selected,
-            start_time=time_selected,
-            end_time=end_time.time(),
-        )
+        client_id = clients.get_client_id_by_telephone(phone)
+
+        if client_id:
+            if len(client_id) > 1:
+                chat_id = context.user_data["chat_id"]
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text="❗ Найдено несколько клиентов с таким телефоном. Операция прервана ❗",
+                )
+                return
+            clients.update_client(
+                client_id=client_id[0][0],
+                name=name,
+                telephone=phone,
+            )
+        else:
+            clients.add_client(
+                tg_id=None,
+                tg_first_name=None,
+                tg_username=None,
+                name=name,
+                telephone=phone,
+            )
+            client_id = clients.get_client_id_by_telephone(phone)
+
+    appointments.create_appointment(
+        client_id=client_id[0][0],
+        client_name=name,
+        client_telephone=phone,
+        procedure=procedure_name,
+        date=date_selected,
+        start_time=time_selected,
+        end_time=end_time.time(),
+    )

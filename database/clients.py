@@ -86,7 +86,7 @@ class Clients:
                     f"Найдено несколько клиентов с телефоном {telephone}. "
                     "Используйте tg_id для однозначной идентификации."
                 )
-            return client_ids[0][0]  # Возвращаем ID первого клиента
+            return client_ids
         else:
             self.logger.debug(f"Клиент с телефоном {telephone} не найден.")
             return None
@@ -234,3 +234,18 @@ class Clients:
         else:
             self.logger.debug(f"Клиент с ID {id} не найден.")
             return None
+
+    def update_client(self, client_id: int, name: str, telephone: str):
+        """Обновить данные клиента."""
+        query = """
+            UPDATE Clients
+            SET name = %s, telephone = %s
+            WHERE id = %s
+        """
+        self.db.execute_query(query, name, telephone, client_id)
+
+    def fetch_all_clients(self) -> Optional[List[Tuple]]:
+        """Получить данные обо всех клиентах."""
+        query = "SELECT id, name, telephone, tg_username FROM Clients"
+        result = self.db.fetch_data(query)
+        return result

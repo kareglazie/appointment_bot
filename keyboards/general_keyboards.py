@@ -58,9 +58,10 @@ class GeneralKeyboards:
         return InlineKeyboardMarkup(keyboard)
 
     def date(
-        self, year: int, month: int, available_dates: List[date]
+        self, year: int, month: int, available_dates: List[date], tg_id: int
     ) -> InlineKeyboardMarkup:
         """Создает клавиатуру для выбора даты в указанном месяце."""
+
         keyboard = []
         first_day = datetime(year, month, 1)
         last_day = (first_day + timedelta(days=32)).replace(day=1) - timedelta(days=1)
@@ -104,17 +105,20 @@ class GeneralKeyboards:
         )
 
         row = []
-        start_day = 1
 
         first_weekday = first_day.weekday()
 
         for _ in range(first_weekday):
             row.append(InlineKeyboardButton(" ", callback_data="ignore"))
 
-        for day in range(start_day, last_day.day + 1):
-            current_date = datetime(year, month, day).date()
+        if not tg_id in ADMIN_IDS:
+            block_condition = lambda date: date <= today
+        else:
+            block_condition = lambda date: date < today
 
-            if current_date <= today:
+        for day in range(1, last_day.day + 1):
+            current_date = datetime(year, month, day).date()
+            if block_condition(current_date):
                 row.append(InlineKeyboardButton(EMOJI["lock"], callback_data="ignore"))
             elif current_date in available_dates:
                 row.append(
@@ -192,7 +196,14 @@ class GeneralKeyboards:
                 [
                     InlineKeyboardButton(
                         INLINE_BUTTONS["back_to_admin_menu"],
-                        callback_data="back_to_admin_menu",
+                        callback_data="back_to_menu",
+                    )
+                ]
+            )
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        INLINE_BUTTONS["back_to_dates"], callback_data="back_to_dates"
                     )
                 ]
             )
@@ -204,7 +215,6 @@ class GeneralKeyboards:
                     )
                 ]
             )
-
         return InlineKeyboardMarkup(keyboard)
 
     def procedures(self) -> ReplyKeyboardMarkup:

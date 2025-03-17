@@ -96,7 +96,7 @@ class Schedule:
             last_day_of_month = (first_day_of_month + timedelta(days=32)).replace(
                 day=1
             ) - timedelta(days=1)
-            start_date = max(today + timedelta(days=1), first_day_of_month)
+            start_date = first_day_of_month
             end_date = last_day_of_month
         else:
             start_date = today

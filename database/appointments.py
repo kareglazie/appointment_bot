@@ -36,8 +36,7 @@ class Appointments:
         """Получить все записи на конкретную дату."""
 
         query = """
-            SELECT a.id, a.procedure, c.tg_first_name, c.tg_username, c.name, c.telephone, 
-                a.start_time, a.end_time, a.comment 
+            SELECT a.id, a.procedure, c.name, c.telephone, a.start_time, a.end_time
             FROM Appointments a
             JOIN Clients c ON a.client_id = c.id
             WHERE a.date = %s

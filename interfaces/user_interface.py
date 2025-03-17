@@ -27,7 +27,7 @@ class UserInterface:
             reply_markup=self.general_keyboards["procedures"],
         )
 
-    async def dates(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def dates(self, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=context.user_data["chat_id"],
             text=USER_MESSAGES["select_date"],
@@ -58,7 +58,7 @@ class UserInterface:
             reply_markup=self.user_keyboards["main_menu"],
         )
 
-    async def enter_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def enter_name(self, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=context.user_data["chat_id"],
             text=f"{format_date_for_client_interface(context.user_data['date_selected'])}\n{context.user_data['time_selected'].strftime("%H:%M")}\n\n{USER_MESSAGES["enter_name"]}",
@@ -106,7 +106,7 @@ class UserInterface:
             ),
         )
 
-    async def proceed(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def proceed(self, context: ContextTypes.DEFAULT_TYPE):
         if not context.user_data["reschedule"]:
             await context.bot.send_message(
                 chat_id=context.user_data["chat_id"],
@@ -121,7 +121,7 @@ class UserInterface:
             )
 
     async def booking_cancelled(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+        self, context: ContextTypes.DEFAULT_TYPE
     ):
         await context.bot.send_message(
             chat_id=context.user_data["chat_id"],
@@ -129,7 +129,7 @@ class UserInterface:
             reply_markup=self.user_keyboards["final"],
         )
 
-    async def back_to_edit(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def back_to_edit(self, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=context.user_data["chat_id"],
             text=USER_MESSAGES["edit_phone"],
@@ -181,7 +181,7 @@ class UserInterface:
         )
 
     async def edit_appointments(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE, client_id: int
+        self, context: ContextTypes.DEFAULT_TYPE
     ):
 
         keyboard = []
