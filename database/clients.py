@@ -98,7 +98,7 @@ class Clients:
             return None
 
         client_id = self.db.fetch_data("SELECT id FROM Clients WHERE tg_id = %s", tg_id)
-        return client_id[0][0] if client_id else None
+        return client_id if client_id else None
 
     def update_client_phone_by_phone(self, old_telephone: str, new_telephone: str):
         """Обновить телефон клиента (получение данных по номеру телефона)."""

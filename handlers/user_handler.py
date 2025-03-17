@@ -12,7 +12,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     CallbackContext,
 )
-from logger import setup_logger
+
 from config import ID_TO_SEND_NOTIFICATIONS
 from keyboards.general_keyboards import *
 from consts.messages import (
@@ -139,7 +139,7 @@ class UserHandler:
                 await update.message.reply_text(
                     text=USER_MESSAGES["enter_phone_for_account"],
                     reply_markup=ReplyKeyboardMarkup(
-                        [[KeyboardButton(text=REPLY_USER_BUTTONS["back_to_menu"])]]
+                        [[KeyboardButton(text=REPLY_USER_BUTTONS["back_to_menu"])]], resize_keyboard=True
                     ),
                 )
                 return USER_ENTER_PHONE_FOR_ACCOUNT
